@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Snapshot Decisions</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --line: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+      --warn: #eab308;
+      --bad: #ef4444;
+      --accent: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .navbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 { font-size: 18px; font-weight: 600; }
+    .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .nav-links a:hover, .nav-links a.active { background: #334155; color: var(--text); }
+    .container { max-width: 1500px; margin: 0 auto; padding: 20px; }
+    .filters {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .filters select, .filters button {
+      background: #0b1220;
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .filters button { cursor: pointer; }
+    .filters button:hover { border-color: var(--accent); color: var(--accent); }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .card .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      font-size: 12px;
+      vertical-align: top;
+    }
+    th { color: var(--muted); background: rgba(0,0,0,0.2); }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 4px 8px;
+      text-transform: uppercase;
+    }
+    .ok { color: var(--ok); background: rgba(34,197,94,0.15); }
+    .warn { color: var(--warn); background: rgba(234,179,8,0.15); }
+    .bad { color: var(--bad); background: rgba(239,68,68,0.15); }
+    .muted { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; }
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pagination button {
+      background: #0b1220;
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>Snapshot Decision Audit</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/decisions" class="active">Decisions</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="filters">
+      <select id="camera-filter">
+        <option value="">All Cameras</option>
+      </select>
+      <select id="status-filter">
+        <option value="">All Status</option>
+        <option value="PROCESSED">PROCESSED</option>
+        <option value="SKIPPED">SKIPPED</option>
+        <option value="ERROR">ERROR</option>
+      </select>
+      <select id="skip-filter">
+        <option value="">All Skip Reasons</option>
+        <option value="DUPLICATE_HASH">DUPLICATE_HASH</option>
+        <option value="OUTSIDE_HOURS">OUTSIDE_HOURS</option>
+        <option value="SCENE_UNCHANGED">SCENE_UNCHANGED</option>
+        <option value="CORRUPT_IMAGE">CORRUPT_IMAGE</option>
+        <option value="HASH_FAILED">HASH_FAILED</option>
+      </select>
+      <button onclick="refreshData()">Refresh</button>
+    </div>
+
+    <div class="summary">
+      <div class="card"><div class="label">Total</div><div class="value" id="sum-total">0</div></div>
+      <div class="card"><div class="label">Processed</div><div class="value" id="sum-processed">0</div></div>
+      <div class="card"><div class="label">Skipped</div><div class="value" id="sum-skipped">0</div></div>
+      <div class="card"><div class="label">Error</div><div class="value" id="sum-error">0</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Camera</th>
+            <th>Status</th>
+            <th>Skip Reason</th>
+            <th>Scene Diff</th>
+            <th>YOLO</th>
+            <th>Evidence</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody id="decision-body"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <div id="page-info">Page 1</div>
+      <div>
+        <button id="prev-btn" onclick="changePage(-1)">Prev</button>
+        <button id="next-btn" onclick="changePage(1)">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let page = 1;
+    let limit = 50;
+    let total = 0;
+
+    function escapeHtml(text) {
+      return (text || '').replace(/[&<>'\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+    }
+
+    function statusTag(status) {
+      if (status === 'PROCESSED') return '<span class="tag ok">PROCESSED</span>';
+      if (status === 'SKIPPED') return '<span class="tag warn">SKIPPED</span>';
+      return '<span class="tag bad">ERROR</span>';
+    }
+
+    async function loadCameras() {
+      const res = await fetch('/admin/cameras.json');
+      const data = await res.json();
+      const sel = document.getElementById('camera-filter');
+      data.cameras.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.camera_id;
+        opt.textContent = c.camera_id + (c.name ? ` (${c.name})` : '');
+        sel.appendChild(opt);
+      });
+    }
+
+    function getParams() {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+
+      const cam = document.getElementById('camera-filter').value;
+      const status = document.getElementById('status-filter').value;
+      const skip = document.getElementById('skip-filter').value;
+      if (cam) params.set('camera_id', cam);
+      if (status) params.set('decision_status', status);
+      if (skip) params.set('skip_reason', skip);
+      return params;
+    }
+
+    async function refreshData() {
+      const res = await fetch('/admin/snapshot-decisions.json?' + getParams().toString());
+      const data = await res.json();
+      total = data.total || 0;
+
+      const rows = data.decisions || [];
+      const body = document.getElementById('decision-body');
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="8" class="muted">No decision records found.</td></tr>';
+      } else {
+        body.innerHTML = rows.map(r => {
+          const yoloText = `${r.yolo_vehicle_objects ?? '-'} / ${r.yolo_total_objects ?? '-'}`;
+          const evidence = r.snapshot_id ? `<a href="/admin/snapshots/${r.snapshot_id}/evidence-image" target="_blank">evidence</a>` : '-';
+          return `
+            <tr>
+              <td>${r.created_at ? new Date(r.created_at).toLocaleString() : '-'}</td>
+              <td class="mono">${escapeHtml(r.camera_id)}</td>
+              <td>${statusTag(r.decision_status)}</td>
+              <td class="mono">${escapeHtml(r.skip_reason || '-')}</td>
+              <td>${r.scene_diff_value == null ? '-' : Number(r.scene_diff_value).toFixed(2)}</td>
+              <td class="mono">${yoloText}</td>
+              <td>${evidence}</td>
+              <td class="muted">${escapeHtml(r.error_message || '-')}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const processed = rows.filter(r => r.decision_status === 'PROCESSED').length;
+      const skipped = rows.filter(r => r.decision_status === 'SKIPPED').length;
+      const errors = rows.filter(r => r.decision_status === 'ERROR').length;
+      document.getElementById('sum-total').textContent = total;
+      document.getElementById('sum-processed').textContent = processed;
+      document.getElementById('sum-skipped').textContent = skipped;
+      document.getElementById('sum-error').textContent = errors;
+
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      document.getElementById('page-info').textContent = `Page ${page} / ${totalPages}`;
+      document.getElementById('prev-btn').disabled = page <= 1;
+      document.getElementById('next-btn').disabled = page >= totalPages;
+    }
+
+    function changePage(delta) {
+      page = Math.max(1, page + delta);
+      refreshData();
+    }
+
+    document.getElementById('camera-filter').addEventListener('change', () => { page = 1; refreshData(); });
+    document.getElementById('status-filter').addEventListener('change', () => { page = 1; refreshData(); });
+    document.getElementById('skip-filter').addEventListener('change', () => { page = 1; refreshData(); });
+
+    loadCameras().then(refreshData);
+    setInterval(refreshData, 10000);
+  </script>
+</body>
+</html>

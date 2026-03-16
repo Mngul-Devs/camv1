@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Token Ledger</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 { font-size: 20px; font-weight: 600; }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h2 { font-size: 24px; font-weight: 600; }
+    
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .summary-card .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .summary-card .value {
+      font-size: 32px;
+      font-weight: 700;
+    }
+    .summary-card .sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    
+    .section {
+      margin-bottom: 32px;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    
+    .table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-card table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .table-card th, .table-card td {
+      padding: 12px 20px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .table-card th {
+      color: var(--text-secondary);
+      font-weight: 500;
+      background: rgba(0,0,0,0.2);
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .table-card tr:last-child td { border-bottom: none; }
+    .table-card tr:hover td { background: var(--bg-hover); }
+    
+    .usage-bar {
+      width: 100px;
+      height: 6px;
+      background: var(--bg-dark);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .usage-bar .fill {
+      height: 100%;
+      background: var(--accent-blue);
+    }
+    
+    .status-success { color: var(--status-green); }
+    .status-error { color: var(--status-red); }
+    
+    .chart-placeholder {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .filters select, .filters input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/cameras">Cameras</a>
+      <a href="/admin/zones">Zones</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/tokens" class="active">Tokens</a>
+      <a href="/admin/integrations">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>Token Ledger</h2>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="label">Tokens Charged Today</div>
+        <div class="value" id="tokens-today">-</div>
+        <div class="sub" id="tokens-today-change">1 token = 1 car park zone query</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Tokens This Week</div>
+        <div class="value" id="tokens-week">-</div>
+        <div class="sub">7-day total</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Tokens This Month</div>
+        <div class="value" id="tokens-month">-</div>
+        <div class="sub">30-day total</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">API Calls Today</div>
+        <div class="value" id="calls-today">-</div>
+        <div class="sub" id="calls-week-sub">-</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Active Clients</div>
+        <div class="value" id="active-clients">-</div>
+        <div class="sub">used API today</div>
+      </div>
+    </div>
+    
+    <!-- Usage by Client -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Usage by Client</div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Tokens Today</th>
+              <th>Tokens Week</th>
+              <th>Tokens Month</th>
+              <th>API Calls Today</th>
+              <th>Rate Limit</th>
+              <th>Last Used</th>
+            </tr>
+          </thead>
+          <tbody id="client-usage"></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Recent API Calls</div>
+        <button class="btn btn-secondary" onclick="exportLedger()">Export CSV</button>
+      </div>
+      <div class="filters">
+        <select id="filter-client" onchange="loadLedger()">
+          <option value="">All Clients</option>
+        </select>
+        <select id="filter-endpoint" onchange="loadLedger()">
+          <option value="">All Endpoints</option>
+          <option value="/api/v1/sites">/api/v1/sites/*</option>
+          <option value="/api/v1/cameras">/api/v1/cameras/*</option>
+          <option value="/api/v1/evidence">/api/v1/evidence/*</option>
+        </select>
+        <input type="date" id="filter-date" onchange="loadLedger()">
+      </div>
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Client</th>
+              <th>Endpoint</th>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Response Time</th>
+              <th>Tokens</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadSummary() {
+      const resp = await fetch('/admin/tokens/summary.json');
+      const data = await resp.json();
+      
+      document.getElementById('tokens-today').textContent = data.tokens_today.toLocaleString();
+      document.getElementById('tokens-week').textContent = data.tokens_week.toLocaleString();
+      document.getElementById('tokens-month').textContent = data.tokens_month.toLocaleString();
+      document.getElementById('calls-today').textContent = data.calls_today.toLocaleString();
+      document.getElementById('calls-week-sub').textContent = `${data.calls_week.toLocaleString()} this week`;
+      document.getElementById('active-clients').textContent = data.active_clients;
+      
+      const change = data.tokens_today - data.tokens_yesterday;
+      const changeEl = document.getElementById('tokens-today-change');
+      if (data.tokens_yesterday > 0) {
+        changeEl.textContent = (change >= 0 ? '+' : '') + change + ' vs yesterday';
+      }
+    }
+    
+    async function loadClientUsage() {
+      const resp = await fetch('/admin/tokens/by-client.json');
+      const data = await resp.json();
+      
+      const tbody = document.getElementById('client-usage');
+      const select = document.getElementById('filter-client');
+      
+      tbody.innerHTML = data.clients.map(client => `
+        <tr>
+          <td>${client.name}</td>
+          <td><strong>${client.tokens_today}</strong></td>
+          <td>${client.tokens_week}</td>
+          <td>${client.tokens_month}</td>
+          <td>${client.calls_today}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="usage-bar">
+                <div class="fill" style="width: ${Math.min(client.rate_usage_pct, 100)}%"></div>
+              </div>
+              <span style="font-size: 12px;">${client.rate_limit}/min</span>
+            </div>
+          </td>
+          <td>${client.last_used ? formatTime(client.last_used) : 'Never'}</td>
+        </tr>
+      `).join('');
+      
+      // Populate filter
+      if (select.options.length === 1) {
+        data.clients.forEach(client => {
+          const opt = document.createElement('option');
+          opt.value = client.id;
+          opt.textContent = client.name;
+          select.appendChild(opt);
+        });
+      }
+    }
+    
+    async function loadLedger() {
+      const client = document.getElementById('filter-client').value;
+      const endpoint = document.getElementById('filter-endpoint').value;
+      const date = document.getElementById('filter-date').value;
+      
+      const params = new URLSearchParams();
+      params.set('limit', 50);
+      if (client) params.set('client_id', client);
+      if (endpoint) params.set('endpoint', endpoint);
+      if (date) params.set('date', date);
+      
+      const resp = await fetch('/admin/tokens/ledger.json?' + params.toString());
+      const data = await resp.json();
+      
+      const tbody = document.getElementById('ledger-tbody');
+      tbody.innerHTML = data.entries.map(entry => `
+        <tr>
+          <td>${formatTime(entry.created_at)}</td>
+          <td>${entry.client_name || '-'}</td>
+          <td style="font-family: monospace; font-size: 12px;">${entry.endpoint}</td>
+          <td>${entry.method}</td>
+          <td class="${entry.status_code < 400 ? 'status-success' : 'status-error'}">${entry.status_code}</td>
+          <td>${entry.response_time_ms}ms</td>
+          <td>${entry.tokens_used}</td>
+        </tr>
+      `).join('');
+    }
+    
+    function formatTime(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      return d.toLocaleString();
+    }
+    
+    function exportLedger() {
+      const client = document.getElementById('filter-client').value;
+      const endpoint = document.getElementById('filter-endpoint').value;
+      const date = document.getElementById('filter-date').value;
+      
+      const params = new URLSearchParams();
+      if (client) params.set('client_id', client);
+      if (endpoint) params.set('endpoint', endpoint);
+      if (date) params.set('date', date);
+      params.set('limit', '1000');
+      
+      fetch('/admin/tokens/ledger.json?' + params.toString())
+        .then(r => r.json())
+        .then(data => {
+          const rows = [['ID','Client','Endpoint','Method','Status','Response Time (ms)','Tokens Used','Created At']];
+          data.entries.forEach(e => {
+            rows.push([e.id, e.client_name, e.endpoint, e.method, e.status_code, e.response_time_ms, e.tokens_used, e.created_at]);
+          });
+          const csv = rows.map(r => r.join(',')).join('\n');
+          const blob = new Blob([csv], {type: 'text/csv'});
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'token_ledger.csv';
+          a.click();
+        });
+    }
+    
+    loadSummary();
+    loadClientUsage();
+    loadLedger();
+    setInterval(loadSummary, 60000);
+  </script>
+</body>
+</html>

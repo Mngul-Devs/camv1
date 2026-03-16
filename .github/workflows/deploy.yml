@@ -1,0 +1,40 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: SSH Deploy → GCP VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            echo "=== CamPark Deploy: $(date) ==="
+
+            cd /home/PC-Mighul/camv1
+
+            echo "--- Pulling latest code ---"
+            git pull origin main
+
+            echo "--- Rebuilding and restarting services ---"
+            docker compose up -d --build
+
+            echo "--- Cleaning up old images ---"
+            docker image prune -f
+
+            echo "--- Health check ---"
+            sleep 5
+            curl -sf http://localhost:8000/health || (echo "HEALTH CHECK FAILED" && exit 1)
+
+            echo "=== Deploy complete ==="

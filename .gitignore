@@ -1,0 +1,18 @@
+.env
+.env.*
+data/
+models/
+node_modules/
+dist/
+.cache/
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+
+# Planning / archive docs (large, not needed in repo)
+docs/
+
+# GCS credentials
+local_tuning/gcs-key.json
+gcs-key.json

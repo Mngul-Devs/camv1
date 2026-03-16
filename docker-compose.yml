@@ -1,0 +1,198 @@
+services:
+  # HTTPS Reverse Proxy
+  caddy:
+    image: caddy:2-alpine
+    container_name: campark-caddy
+    volumes:
+      - ./services/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend-v6
+      - api
+    networks:
+      - campark
+    restart: unless-stopped
+
+  frontend-v6:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE: ""
+    container_name: campark-frontend-v6
+    networks:
+      - campark
+    restart: unless-stopped
+
+  # FTP Server — multi-camera support
+  # Each camera gets its own FTP user & home dir under /home/{username}/incoming
+  # Add cameras via FTP_USERS env var: "cam001:pass1,cam002:pass2,cam003:pass3"
+  ftp:
+    build:
+      context: ./services/ftp
+      dockerfile: Dockerfile
+    container_name: campark-ftp
+    env_file:
+      - .env
+    environment:
+      PUBLICHOST: "${FTP_PUBLICHOST:-localhost}"
+      FTP_USERS: "${FTP_USERS:-cam001:password123}"
+      FTP_PASSIVE_PORTS: "${FTP_PASSIVE_PORTS:-30000:30049}"
+    volumes:
+      - ./data/ftp:/home
+    ports:
+      - "21:21"
+      - "30000-30049:30000-30049" # Passive ports
+    networks:
+      - campark
+    restart: unless-stopped
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: campark-db
+    environment:
+      POSTGRES_DB: campark
+      POSTGRES_USER: campark
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme_poc}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/config/init.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    ports:
+      - "127.0.0.1:5432:5432" # localhost only — not exposed to internet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campark -d campark"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - campark
+    restart: unless-stopped
+
+  # API Server (admin UI + JSON API)
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: campark-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "${DATABASE_URL:-postgresql://campark:changeme_poc@postgres:5432/campark}"
+      FTP_INGEST_PATH: /data/ftp
+      IMAGE_ROOT: /data/images
+      YOLO_QUEUE_REDIS: "redis:6379"
+      REDIS_USE_DB_FALLBACK: "true"
+      LOG_LEVEL: INFO
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-changeme_poc}"
+    volumes:
+      - ./data/ftp:/data/ftp
+      - ./data/images:/data/images
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - campark
+    restart: unless-stopped
+
+  # YOLO Worker (CPU-based inference)
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    container_name: campark-worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "${DATABASE_URL:-postgresql://campark:changeme_poc@postgres:5432/campark}"
+      FTP_INGEST_PATH: /data/ftp
+      IMAGE_ROOT: /data/images
+      YOLO_QUEUE_REDIS: "redis:6379"
+      REDIS_USE_DB_FALLBACK: "true"
+      YOLO_CONFIDENCE: "0.50"
+      YOLO_MODEL: "yolov8n.pt"
+      YOLO_ENABLED: "true"
+      OVERLAP_THRESHOLD: "0.15"
+      ZONECLS_MODE: "placeholder"
+      ZONECLS_MODEL_PATH: "/models/zonecls.onnx"
+      ZONECLS_THRESHOLD: "0.55"
+      ZONECLS_PLACEHOLDER_PROB: "0.0"
+      LOG_LEVEL: INFO
+      CAMERA_TZ: "Asia/Kuala_Lumpur"
+    volumes:
+      - ./data/ftp:/data/ftp
+      - ./data/images:/data/images
+      - ./models:/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - campark
+    restart: unless-stopped
+    # Optionally set CPU limits for dev machine
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
+
+  # Multi-protocol Camera Ingestion Service
+  # Currently disabled — LAPI WebSocket not available.
+  # Uncomment to re-enable RTSP / HTTP snapshot polling or LAPI WS.
+  # ingestion:
+  #   build:
+  #     context: ./services/ingestion
+  #     dockerfile: Dockerfile
+  #   container_name: campark-ingestion
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DATABASE_URL: "${DATABASE_URL:-postgresql://campark:changeme_poc@postgres:5432/campark}"
+  #     FTP_INGEST_PATH: /data/ftp
+  #     LAPI_WS_HOST: "0.0.0.0"
+  #     LAPI_WS_PORT: "${LAPI_WS_PORT:-8765}"
+  #     RTSP_INTERVAL: "${RTSP_INTERVAL:-10.0}"
+  #     HTTP_SNAP_INTERVAL: "${HTTP_SNAP_INTERVAL:-10.0}"
+  #     DB_POLL_INTERVAL: "30.0"
+  #     LOG_LEVEL: INFO
+  #   volumes:
+  #     - ./data/ftp:/data/ftp
+  #   ports:
+  #     - "${LAPI_WS_PORT:-8765}:8765"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - campark
+  #   restart: unless-stopped
+
+  # Redis (optional for v1, fallback to DB queue)
+  redis:
+    image: redis:7-alpine
+    container_name: campark-redis
+    ports:
+      - "127.0.0.1:6379:6379" # localhost only — not exposed to internet
+    volumes:
+      - redis_data:/data
+    networks:
+      - campark
+    restart: unless-stopped
+    # Don't start Redis by default in POC (use DB queue)
+    # Remove this service if using DB fallback
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  campark:
+    driver: bridge

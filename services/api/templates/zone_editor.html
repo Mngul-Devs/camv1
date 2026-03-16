@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark — Zone Editor</title>
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <style>
+    :root {
+      --bg-dark:#0f172a;--bg-card:#1e293b;--bg-hover:#334155;
+      --text-primary:#f1f5f9;--text-secondary:#94a3b8;
+      --accent:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f97316;--border:#334155;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:var(--text-primary);}
+    .navbar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;}
+    .navbar h1{font-size:18px;}
+    .nav-links{display:flex;gap:4px;}
+    .nav-links a{color:var(--text-secondary);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;transition:.15s;}
+    .nav-links a:hover,.nav-links a.active{background:var(--bg-hover);color:var(--text-primary);}
+    .editor{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px;height:calc(100vh - 50px);}
+    @media(max-width:960px){.editor{grid-template-columns:1fr;}}
+    .canvas-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;}
+    .canvas-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+    .canvas-bar .cam-label{font-size:13px;font-weight:600;color:var(--text-secondary);margin-right:auto;}
+    .tb{padding:5px 12px;border:1px solid var(--border);border-radius:5px;background:var(--bg-hover);color:var(--text-primary);font-size:12px;cursor:pointer;transition:.15s;user-select:none;}
+    .tb:hover{border-color:var(--accent);color:#fff;}
+    .tb.active{background:var(--orange);border-color:var(--orange);color:#fff;box-shadow:0 0 10px rgba(249,115,22,.35);}
+    .canvas-body{flex:1;position:relative;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+    #k-wrap{position:relative;}
+    .canvas-footer{padding:6px 12px;font-size:11px;color:var(--text-secondary);border-top:1px solid var(--border);min-height:28px;}
+    .canvas-footer.active{color:var(--orange);font-weight:600;}
+    .sidebar{display:flex;flex-direction:column;gap:12px;overflow-y:auto;}
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;}
+    .card.hl{border-color:var(--orange);box-shadow:0 0 12px rgba(249,115,22,.12);}
+    .card-hdr{font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+    .badge{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-size:11px;font-weight:700;flex-shrink:0;}
+    .badge.on{background:var(--orange);animation:pulse 1.4s infinite;}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.35)}50%{box-shadow:0 0 0 6px rgba(249,115,22,0)}}
+    .row-f{display:flex;gap:10px;}
+    .field{flex:1;margin-bottom:10px;}
+    .field label{display:block;font-size:11px;color:var(--text-secondary);margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em;}
+    .field input,.field select{width:100%;padding:8px 10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:13px;}
+    .field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+    .btn{width:100%;padding:10px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;margin-bottom:6px;}
+    .btn:last-child{margin-bottom:0;}
+    .btn-orange{background:var(--orange);color:#fff;}
+    .btn-green{background:var(--green);color:#fff;}
+    .btn-red{background:var(--red);color:#fff;}
+    .btn-ghost{background:var(--bg-hover);color:var(--text-primary);}
+    .btn:hover{opacity:.9;}
+    .btn:disabled{opacity:.35;cursor:not-allowed;}
+    .hint{font-size:11px;color:var(--text-secondary);line-height:1.5;margin-top:6px;}
+    .draw-status{font-size:12px;color:var(--orange);font-weight:600;margin-bottom:8px;padding:6px 10px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:5px;display:none;}
+    .draw-status.show{display:block;}
+    .zone-list{max-height:250px;overflow-y:auto;}
+    .z-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-dark);border-radius:5px;margin-bottom:4px;font-size:12px;cursor:pointer;border:1px solid transparent;transition:.15s;}
+    .z-item:hover{background:var(--bg-hover);}
+    .z-item.sel{border-color:var(--accent);}
+    .z-item .nm{font-weight:600;}
+    .z-item .mt{color:var(--text-secondary);font-size:10px;margin-left:4px;}
+    .z-item .del{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:0 2px;}
+    .cnt{font-size:12px;color:var(--text-secondary);margin-bottom:8px;}
+    .cnt b{color:var(--accent);}
+    .toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:7px;font-size:13px;font-weight:500;z-index:9999;animation:fadeUp .25s ease;}
+    .toast-ok{background:var(--green);color:#fff;}
+    .toast-err{background:var(--red);color:#fff;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    /* ---- modals ---- */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(3px);}
+    .modal-backdrop.hidden{display:none;}
+    .modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:28px 28px 22px;max-width:420px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.6);}
+    .modal-icon{width:48px;height:48px;border-radius:50%;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;}
+    .modal-title{font-size:16px;font-weight:700;text-align:center;margin-bottom:10px;}
+    .modal-body{font-size:13px;color:var(--text-secondary);text-align:center;line-height:1.6;margin-bottom:22px;}
+    .modal-body strong{color:var(--text-primary);}
+    .modal-actions{display:flex;gap:10px;}
+    .modal-actions .btn{margin-bottom:0;flex:1;}
+  </style>
+  /* embed mode: hide nav, full-height editor */
+  body.embed .navbar { display: none !important; }
+  body.embed .editor { height: 100vh; }
+</style>
+</head>
+<body{% if embed %} class="embed"{% endif %}>
+{% if not embed %}
+<nav class="navbar">
+  <h1>CamPark</h1>
+  <div class="nav-links">
+    <a href="/admin/dashboard">Dashboard</a>
+    <a href="/admin/cameras">Cameras</a>
+    <a href="/admin/zones" class="active">Zones</a>
+    <a href="/admin/events">Events</a>
+    <a href="/admin/tokens">Tokens</a>
+    <a href="/admin/integrations">Integrations</a>
+    <a href="/admin/scada">SCADA</a>
+    <a href="/admin/system">System</a>
+    <a href="/logout" style="color:var(--red)">Logout</a>
+  </div>
+</nav>
+{% endif %}
+
+<div class="editor">
+  <!-- ===== CANVAS PANEL ===== -->
+  <div class="canvas-panel">
+    <div class="canvas-bar">
+      <span class="cam-label">Camera: {{ camera_id }}</span>
+      <button class="tb" id="btn-draw" onclick="startDraw()">&#9632; Draw Lane</button>
+      <button class="tb" id="btn-cancel" style="display:none" onclick="cancelDraw()">&#10005; Cancel</button>
+      <button class="tb" onclick="deleteSelected()">&#128465; Delete Lane</button>
+    </div>
+    <div class="canvas-body">
+      <div id="k-wrap"></div>
+    </div>
+    <div class="canvas-footer" id="footer">
+      Click <b>Draw Lane</b> then click <b>4 corner points</b> to outline the parking lane.
+    </div>
+  </div>
+
+  <!-- ===== SIDEBAR ===== -->
+  <div class="sidebar">
+    <!-- Step 1: Draw -->
+    <div class="card" id="c1">
+      <div class="card-hdr"><span class="badge" id="b1">1</span> Draw Lane Area</div>
+      <div class="draw-status" id="ds"></div>
+      <p class="hint">Click <b>Draw Lane</b>, then click the <b>4 corners</b> of the parking lane (any order — auto-ordered TL→TR→BR→BL). Supports any trapezoid shape.</p>
+    </div>
+
+    <!-- Step 2: Split -->
+    <div class="card" id="c2">
+      <div class="card-hdr"><span class="badge" id="b2">2</span> Split into Spaces</div>
+      <div class="row-f">
+        <div class="field"><label>Spaces (cols)</label><input id="inp-cols" type="number" min="1" max="50" value="5"></div>
+        <div class="field"><label>Rows</label><input id="inp-rows" type="number" min="1" max="10" value="1"></div>
+      </div>
+      <div class="row-f">
+        <div class="field"><label>Prefix</label><input id="inp-prefix" value="A" maxlength="3"></div>
+        <div class="field"><label>Gap %</label><input id="inp-gap" type="number" min="0" max="20" value="2"></div>
+      </div>
+      <div class="row-f">
+        <div class="field">
+          <label>Direction</label>
+          <select id="inp-dir">
+            <option value="inc">Increasing (A01&#8594;)</option>
+            <option value="dec">Decreasing (&#8594;A01)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-orange" id="btn-split" onclick="splitLane()" disabled>Split into Spaces</button>
+      <p class="hint">After splitting, <b>drag any yellow dot</b> to fine-tune that corner. Each dot moves independently — only the edges connected to it stretch.</p>
+    </div>
+
+    <!-- Step 3: Fine-tune list -->
+    <div class="card" id="c3">
+      <div class="card-hdr"><span class="badge" id="b3">3</span> Fine-Tune</div>
+      <div class="cnt">Lanes: <b id="gcnt">0</b> &nbsp; Spaces: <b id="scnt">0</b></div>
+      <div class="zone-list" id="zlist"><div style="color:var(--text-secondary);font-size:12px;">No zones yet.</div></div>
+      <p class="hint" style="margin-top:8px;">
+        Every intersection is an independent <b>yellow dot</b>. Drag any dot to reposition it — only the edges connected to that dot move. All other dots stay exactly where they are.
+      </p>
+    </div>
+
+    <!-- Save card -->
+    <div class="card">
+      <div class="card-hdr">&#128190; Save</div>
+      <button class="btn btn-green"  id="btn-save"    onclick="saveZones()">Save All Zones</button>
+      <button class="btn btn-red"    id="btn-clear"   onclick="openModal('clear')">Clear All</button>
+      <button class="btn btn-ghost"  id="btn-replace" onclick="openModal('replace')">Replace All (Clear + Save)</button>
+      <p class="hint"><b>Save All</b> adds/updates zones. <b>Clear All</b> deletes server zones only (canvas unchanged). <b>Replace All</b> deletes existing then saves current canvas.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHARED CONFIRM MODAL ===== -->
+<div id="confirm-modal" class="modal-backdrop hidden"
+     onclick="if(event.target===this&&!modalLoading)closeModal()">
+  <div class="modal-box">
+    <div class="modal-icon">&#9888;</div>
+    <div class="modal-title"  id="modal-title">Confirm</div>
+    <div class="modal-body"   id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modal-cancel"  onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red"   id="modal-confirm" onclick="runModalAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   GEOMETRY
+   All coordinates normalized [0..1].
+   Quad order: [TL, TR, BR, BL]
+================================================================ */
+const G = {
+  dist(a,b){ return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2); },
+  clampN(p){ return {x:Math.min(1,Math.max(0,p.x)),y:Math.min(1,Math.max(0,p.y))}; },
+  centroid(pts){ return {x:pts.reduce((s,p)=>s+p.x,0)/pts.length,y:pts.reduce((s,p)=>s+p.y,0)/pts.length}; },
+
+  /* Order 4 points as [TL,TR,BR,BL] clockwise */
+  orderQuad(pts){
+    const c=this.centroid(pts);
+    const s=[...pts].sort((a,b)=>Math.atan2(a.y-c.y,a.x-c.x)-Math.atan2(b.y-c.y,b.x-c.x));
+    let mi=0,mv=s[0].x+s[0].y;
+    for(let i=1;i<4;i++){const v=s[i].x+s[i].y;if(v<mv){mv=v;mi=i;}}
+    let o=[];for(let i=0;i<4;i++)o.push(s[(mi+i)%4]);
+    const ax=o[1].x-o[0].x,ay=o[1].y-o[0].y,bx=o[2].x-o[1].x,by=o[2].y-o[1].y;
+    if((ax*by-ay*bx)<0)o.reverse();
+    let mi2=0,mv2=o[0].x+o[0].y;
+    for(let i=1;i<4;i++){const v=o[i].x+o[i].y;if(v<mv2){mv2=v;mi2=i;}}
+    const r=[];for(let i=0;i<4;i++)r.push(o[(mi2+i)%4]);
+    return r;
+  },
+
+  isConvex(q){
+    const sgn=[];
+    for(let i=0;i<4;i++){
+      const a=q[i],b=q[(i+1)%4],c=q[(i+2)%4];
+      sgn.push((b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x)>=0);
+    }
+    return sgn.every(s=>s)||sgn.every(s=>!s);
+  },
+
+  /* Bilinear UV→image: P(u,v)=TL*(1-u)*(1-v)+TR*u*(1-v)+BR*u*v+BL*(1-u)*v */
+  uvToImg(q,u,v){
+    const [TL,TR,BR,BL]=q;
+    return {
+      x:TL.x*(1-u)*(1-v)+TR.x*u*(1-v)+BR.x*u*v+BL.x*(1-u)*v,
+      y:TL.y*(1-u)*(1-v)+TR.y*u*(1-v)+BR.y*u*v+BL.y*(1-u)*v,
+    };
+  },
+
+  /* Derived compartment [u0,u1]×[v0,v1] → 4-point quad [TL,TR,BR,BL] */
+  cellQuad(q,u0,u1,v0,v1){
+    return [
+      this.uvToImg(q,u0,v0),
+      this.uvToImg(q,u1,v0),
+      this.uvToImg(q,u1,v1),
+      this.uvToImg(q,u0,v1),
+    ];
+  },
+
+  /* Inverse: image point → (u,v) — barycentric on 2 triangles */
+  imgToUv(q,p){
+    const [TL,TR,BR,BL]=q;
+    let r=this._bary(TL,TR,BR,p);
+    if(r&&r.s>=0&&r.t>=0&&r.s+r.t<=1)
+      return {u:Math.min(1,Math.max(0,r.t+r.s)),v:Math.min(1,Math.max(0,r.s))};
+    r=this._bary(TL,BR,BL,p);
+    if(r&&r.s>=0&&r.t>=0&&r.s+r.t<=1)
+      return {u:Math.min(1,Math.max(0,r.t)),v:Math.min(1,Math.max(0,r.t+r.s))};
+    return {
+      u:Math.min(1,Math.max(0,(p.x-TL.x)/((TR.x-TL.x)||.001))),
+      v:Math.min(1,Math.max(0,(p.y-TL.y)/((BL.y-TL.y)||.001))),
+    };
+  },
+
+  _bary(A,B,C,P){
+    const v0x=C.x-A.x,v0y=C.y-A.y,v1x=B.x-A.x,v1y=B.y-A.y,v2x=P.x-A.x,v2y=P.y-A.y;
+    const d00=v0x*v0x+v0y*v0y,d01=v0x*v1x+v0y*v1y,d02=v0x*v2x+v0y*v2y;
+    const d11=v1x*v1x+v1y*v1y,d12=v1x*v2x+v1y*v2y;
+    const inv=d00*d11-d01*d01;
+    if(Math.abs(inv)<1e-10)return null;
+    return {s:(d11*d02-d01*d12)/inv,t:(d00*d12-d01*d02)/inv};
+  },
+
+  ptSegDist(p,a,b){
+    const dx=b.x-a.x,dy=b.y-a.y,len2=dx*dx+dy*dy;
+    if(len2<1e-6)return this.dist(p,a);
+    const t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/len2));
+    return this.dist(p,{x:a.x+t*dx,y:a.y+t*dy});
+  },
+
+  ptInPoly(p,poly){
+    let inside=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+      if(((yi>p.y)!=(yj>p.y))&&(p.x<(xj-xi)*(p.y-yi)/(yj-yi)+xi))inside=!inside;
+    }
+    return inside;
+  },
+};
+
+/* ================================================================
+   NAMING
+================================================================ */
+const N = {
+  fmt(prefix,n){ return prefix+String(n).padStart(2,'0'); },
+  /* nextStart: reads all existing lanes for the same prefix */
+  nextStart(lanes,prefix){
+    let max=0;
+    lanes.forEach(la=>{
+      if(la.prefix===prefix&&la.cols>0&&la.rows>0)
+        max=Math.max(max,la.start+la.cols*la.rows-1);
+    });
+    return max+1;
+  },
+  /* Generate ordered label array for a lane */
+  labels(la){
+    const total=la.cols*la.rows,arr=[];
+    for(let i=0;i<total;i++){
+      const n=la.dir==='dec'?la.start+total-1-i:la.start+i;
+      arr.push(this.fmt(la.prefix,n));
+    }
+    return arr;
+  },
+};
+
+/* ================================================================
+   UUID
+================================================================ */
+function uuid(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});}
+
+/* ================================================================
+   PALETTE
+================================================================ */
+const PAL=[
+  {fill:'rgba(59,130,246,.18)',  stroke:'#3b82f6'},
+  {fill:'rgba(34,197,94,.18)',   stroke:'#22c55e'},
+  {fill:'rgba(234,179,8,.18)',   stroke:'#eab308'},
+  {fill:'rgba(168,85,247,.18)',  stroke:'#a855f7'},
+  {fill:'rgba(236,72,153,.18)',  stroke:'#ec4899'},
+  {fill:'rgba(249,115,22,.18)',  stroke:'#f97316'},
+  {fill:'rgba(20,184,166,.18)',  stroke:'#14b8a6'},
+  {fill:'rgba(239,68,68,.18)',   stroke:'#ef4444'},
+];
+let palIdx=0;
+
+/* ================================================================
+   DATA MODEL — LaneArea with point grid
+   Children are derived at render/save time from pts[][].
+   No divider arrays — every intersection is an independent anchor.
+
+   LaneArea {
+     uuid:    string
+     pts:     {x,y}[][]   // [rows+1][cols+1] normalized 0..1
+                           // pts[row][col] — row 0=top, row rows=bottom
+     prefix:  string
+     start:   number
+     cols:    number       // 0 = unsplit
+     rows:    number
+     dir:     'inc'|'dec'
+     gapPct:  number
+     ci:      number       // palette index
+   }
+================================================================ */
+const CAM="{{ camera_id }}";
+let SW=1,SH=1;
+
+let lanes=[];        // LaneArea[]
+let selectedId=null; // uuid of selected lane
+let pendingId=null;  // uuid of lane waiting to be split
+
+const DRAW='draw',EDIT='edit',IDLE='idle';
+let mode=IDLE;
+let drawPts=[];      // screen {x,y} while drawing 4 corners
+
+/* ----------------------------------------------------------------
+   Dot selection state (click-to-select, then drag selected dot)
+   activeDot = { laneId, row, col } | null
+---------------------------------------------------------------- */
+let activeDot=null;
+
+/* ----------------------------------------------------------------
+   Drag state — only for moving an active dot
+   { laneId, row, col, origPt:{x,y}, sx, sy }
+---------------------------------------------------------------- */
+let drag=null;
+
+const DOT_RADIUS  = 7;    // px — visual size of anchor dots
+const HIT_DOT     = 14;   // px — click hit radius for dots
+const HIT_CORNER  = 18;   // px — outer corner dots get slightly bigger hit area
+const DRAG_GAIN   = 0.45; // sensitivity multiplier — lower = more precise
+
+let konva, layer;
+
+/* ================================================================
+   INIT
+================================================================ */
+window.addEventListener('DOMContentLoaded', () => loadBg());
+
+function initKonva(w, h) {
+  SW = w; SH = h;
+  konva = new Konva.Stage({ container: 'k-wrap', width: SW, height: SH });
+  layer = new Konva.Layer();
+  konva.add(layer);
+  konva.on('mousedown touchstart', onDown);
+  konva.on('mousemove touchmove',  onMove);
+  konva.on('mouseup touchend',     onUp);
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+    if (e.key === 'Escape') {
+      if (mode === DRAW) cancelDraw();
+      else { activeDot = null; deselect(); }
+    }
+  });
+}
+
+/* ================================================================
+   BACKGROUND
+================================================================ */
+function loadBg() {
+  fetch(`/api/v1/cameras/${CAM}/snapshot-latest`)
+    .then(r => r.ok ? r.blob() : null)
+    .then(blob => {
+      if (!blob) { noBg(); return; }
+      const url = URL.createObjectURL(blob);
+      const img = new window.Image();
+      img.onload = () => {
+        const box = document.querySelector('.canvas-body');
+        const mW = box.clientWidth - 4, mH = box.clientHeight - 4;
+        const sc = Math.min(mW / img.width, mH / img.height, 1);
+        SW = Math.round(img.width * sc); SH = Math.round(img.height * sc);
+        initKonva(SW, SH);
+        Konva.Image.fromURL(url, ki => {
+          ki.setAttrs({ x: 0, y: 0, width: SW, height: SH, listening: false });
+          layer.add(ki); layer.batchDraw();
+        });
+        loadExisting();
+      };
+      img.src = url;
+    })
+    .catch(() => noBg());
+}
+function noBg() {
+  const box = document.querySelector('.canvas-body');
+  SW = box.clientWidth - 4; SH = box.clientHeight - 4;
+  initKonva(SW, SH);
+  layer.add(new Konva.Text({
+    x: SW/2, y: SH/2,
+    text: 'No snapshot — upload via FTP first',
+    fontSize: 15, fill: '#94a3b8', align: 'center', offsetX: 160, listening: false
+  }));
+  layer.batchDraw();
+  loadExisting();
+}
+
+/* ================================================================
+   COORD HELPERS
+================================================================ */
+const toN  = (sx, sy) => ({ x: sx / SW, y: sy / SH });
+const toS  = p        => ({ x: p.x * SW, y: p.y * SH });
+const qToS = q        => q.map(toS);
+function getPtr() { return konva.getPointerPosition() || { x: 0, y: 0 }; }
+
+/* ================================================================
+   POINT GRID HELPERS
+   pts[r][c] — (rows+1) rows × (cols+1) cols, normalized
+================================================================ */
+
+/* Build a fresh uniform grid from a quad [TL,TR,BR,BL] */
+function buildGrid(quad, cols, rows) {
+  const [TL, TR, BR, BL] = quad;
+  const grid = [];
+  for (let r = 0; r <= rows; r++) {
+    const v = r / rows;
+    const row = [];
+    for (let c = 0; c <= cols; c++) {
+      const u = c / cols;
+      row.push({
+        x: TL.x*(1-u)*(1-v) + TR.x*u*(1-v) + BR.x*u*v + BL.x*(1-u)*v,
+        y: TL.y*(1-u)*(1-v) + TR.y*u*(1-v) + BR.y*u*v + BL.y*(1-u)*v,
+      });
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+
+/* Get screen-space position of a grid dot */
+function dotS(la, r, c) {
+  return toS(la.pts[r][c]);
+}
+
+/* Cell corners for child [r,c] as 4 screen points [TL,TR,BR,BL] */
+function cellCorners(la, r, c) {
+  return [
+    dotS(la, r,   c),
+    dotS(la, r,   c+1),
+    dotS(la, r+1, c+1),
+    dotS(la, r+1, c),
+  ];
+}
+
+/* Cell corners in normalized space */
+function cellCornersN(la, r, c) {
+  return [
+    la.pts[r][c],
+    la.pts[r][c+1],
+    la.pts[r+1][c+1],
+    la.pts[r+1][c],
+  ];
+}
+
+/* Is this dot an outer-boundary dot? */
+function isOuterDot(la, r, c) {
+  return r === 0 || r === la.rows || c === 0 || c === la.cols;
+}
+
+/* ================================================================
+   DRAW MODE
+================================================================ */
+function startDraw() {
+  if (mode === DRAW) return;
+  cancelDraw(false);
+  mode = DRAW; drawPts = [];
+  activeDot = null;
+  deselect();
+  document.getElementById('btn-draw').classList.add('active');
+  document.getElementById('btn-cancel').style.display = '';
+  document.getElementById('b1').classList.add('on');
+  document.getElementById('c1').classList.add('hl');
+  setFooter('DRAW MODE — click 4 corner points of the lane boundary', true);
+  updDS();
+  konva.container().style.cursor = 'crosshair';
+}
+
+function cancelDraw(reset = true) {
+  drawPts = [];
+  if (reset) mode = IDLE;
+  document.getElementById('btn-draw').classList.remove('active');
+  document.getElementById('btn-cancel').style.display = 'none';
+  document.getElementById('b1').classList.remove('on');
+  document.getElementById('c1').classList.remove('hl');
+  setFooter('Click <b>Draw Lane</b> then click <b>4 corner points</b>.', false);
+  updDS(); redraw();
+  konva.container().style.cursor = '';
+}
+
+function updDS() {
+  const el = document.getElementById('ds');
+  if (mode === DRAW) {
+    el.className = 'draw-status show';
+    el.textContent = drawPts.length + ' / 4 points' + (drawPts.length > 0 ? ' — click next corner' : '');
+  } else { el.className = 'draw-status'; }
+}
+
+/* ================================================================
+   EVENTS
+================================================================ */
+function onDown() {
+  const pos = getPtr();
+
+  /* ---- DRAW MODE: collect corner points ---- */
+  if (mode === DRAW) {
+    drawPts.push({ x: pos.x, y: pos.y });
+    updDS();
+    if (drawPts.length === 4) finishDraw();
+    else redraw();
+    return;
+  }
+
+  /* ---- If a dot is already active (glowing), move it to click pos ---- */
+  if (activeDot) {
+    const la = lanes.find(l => l.uuid === activeDot.laneId);
+    if (la) {
+      la.pts[activeDot.row][activeDot.col] = G.clampN(toN(pos.x, pos.y));
+    }
+    activeDot = null;
+    konva.container().style.cursor = 'default';
+    redraw(); refreshList();
+    return;
+  }
+
+  /* ---- Try to hit a dot ---- */
+  const hit = hitDot(pos);
+  if (hit) {
+    selectedId = hit.laneId;
+    activeDot  = hit;
+    konva.container().style.cursor = 'crosshair';
+    redraw();
+    setFooter('Dot selected — <b>drag</b> it or <b>click</b> where you want it. Press <b>Esc</b> to cancel.', true);
+
+    /* Also start drag immediately in case user prefers dragging */
+    const la = lanes.find(l => l.uuid === hit.laneId);
+    if (la) {
+      drag = {
+        laneId: hit.laneId,
+        row: hit.row, col: hit.col,
+        origPt: { ...la.pts[hit.row][hit.col] },
+        sx: pos.x, sy: pos.y,
+      };
+    }
+    return;
+  }
+
+  /* ---- Click in empty space — deselect ---- */
+  activeDot = null;
+  drag = null;
+  deselect();
+}
+
+function onMove() {
+  const pos = getPtr();
+
+  /* Live drag of active dot */
+  if (drag) {
+    const la = lanes.find(l => l.uuid === drag.laneId);
+    if (la) {
+      const dx = (pos.x - drag.sx) / SW * DRAG_GAIN;
+      const dy = (pos.y - drag.sy) / SH * DRAG_GAIN;
+      la.pts[drag.row][drag.col] = G.clampN({
+        x: drag.origPt.x + dx,
+        y: drag.origPt.y + dy,
+      });
+      redraw();
+    }
+    return;
+  }
+
+  /* Cursor hint — show crosshair when hovering a dot */
+  if (mode !== DRAW) {
+    const hit = hitDot(pos);
+    konva.container().style.cursor = hit ? 'crosshair' : 'default';
+  }
+}
+
+function onUp() {
+  if (drag) {
+    drag = null;
+    activeDot = null;
+    konva.container().style.cursor = 'default';
+    refreshList();
+    setFooter('Click <b>Draw Lane</b> then click <b>4 corner points</b>.', false);
+  }
+}
+
+/* ================================================================
+   HIT TESTING — only dots, no lines, no fill
+================================================================ */
+function hitDot(pos) {
+  /* Reverse order so top lanes get priority */
+  for (const la of [...lanes].reverse()) {
+    if (!la.pts || la.cols < 1) continue;
+    for (let r = 0; r <= la.rows; r++) {
+      for (let c = 0; c <= la.cols; c++) {
+        const sp = dotS(la, r, c);
+        const radius = isOuterDot(la, r, c) ? HIT_CORNER : HIT_DOT;
+        if (G.dist(pos, sp) < radius) {
+          return { laneId: la.uuid, row: r, col: c };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/* ================================================================
+   FINISH DRAW — creates a bare LaneArea (unsplit, 1×1 grid)
+================================================================ */
+function finishDraw() {
+  const quad = G.orderQuad(drawPts.map(p => toN(p.x, p.y)));
+  const id = uuid();
+  const ci = palIdx++ % PAL.length;
+  /* Unsplit lane — pts is just the 4 corners as a 2×2 grid */
+  const pts = buildGrid(quad, 1, 1);
+  lanes.push({
+    uuid: id, pts,
+    /* Store quad separately for unsplit state rendering */
+    quad,
+    prefix: 'A', start: 1, cols: 0, rows: 0,
+    dir: 'inc', gapPct: 2, ci,
+  });
+  pendingId  = id;
+  selectedId = id;
+  document.getElementById('btn-split').disabled = false;
+  document.getElementById('b2').classList.add('on');
+  document.getElementById('c2').classList.add('hl');
+  cancelDraw(true);
+  mode = EDIT;
+  redraw(); refreshList();
+  toast('Lane drawn — set spaces/rows and click Split.', 'ok');
+}
+
+/* ================================================================
+   SPLIT — build (rows+1)×(cols+1) point grid from current quad
+================================================================ */
+function splitLane() {
+  if (!pendingId) { toast('Draw a lane first', 'err'); return; }
+  const la = lanes.find(l => l.uuid === pendingId);
+  if (!la) { toast('Lane not found', 'err'); return; }
+
+  const cols   = Math.max(1, parseInt(document.getElementById('inp-cols').value)  || 5);
+  const rows   = Math.max(1, parseInt(document.getElementById('inp-rows').value)  || 1);
+  const prefix = (document.getElementById('inp-prefix').value || 'A').trim() || 'A';
+  const gapPct = parseFloat(document.getElementById('inp-gap').value) || 0;
+  const dir    = document.getElementById('inp-dir').value;
+
+  const start = N.nextStart(lanes.filter(l => l.uuid !== pendingId), prefix);
+
+  la.cols   = cols;
+  la.rows   = rows;
+  la.prefix = prefix;
+  la.start  = start;
+  la.dir    = dir;
+  la.gapPct = gapPct;
+  /* Build uniform grid from the original quad */
+  la.pts    = buildGrid(la.quad, cols, rows);
+
+  const total = cols * rows;
+  const lbls  = N.labels(la);
+
+  document.getElementById('btn-split').disabled = true;
+  document.getElementById('b2').classList.remove('on');
+  document.getElementById('c2').classList.remove('hl');
+  document.getElementById('b3').classList.add('on');
+  document.getElementById('c3').classList.add('hl');
+  setTimeout(() => {
+    document.getElementById('b3').classList.remove('on');
+    document.getElementById('c3').classList.remove('hl');
+  }, 2500);
+
+  pendingId  = null;
+  selectedId = la.uuid;
+  redraw(); refreshList();
+  toast(`Generated ${total} spaces (${lbls[0]}–${lbls[total-1]}). Click any dot to fine-tune.`, 'ok');
+}
+
+/* ================================================================
+   RENDER
+================================================================ */
+function redraw() {
+  layer.find('._z').forEach(n => n.destroy());
+
+  /* Draw-mode preview */
+  if (mode === DRAW) {
+    drawPts.forEach((p, i) => {
+      layer.add(new Konva.Circle({
+        x: p.x, y: p.y, radius: i === 0 ? 7 : 5,
+        fill: i === 0 ? '#f97316' : '#fff',
+        stroke: '#f97316', strokeWidth: 2,
+        listening: false, name: '_z',
+      }));
+      if (i > 0) {
+        const pv = drawPts[i-1];
+        layer.add(new Konva.Line({
+          points: [pv.x, pv.y, p.x, p.y],
+          stroke: '#f97316', strokeWidth: 2, dash: [6, 4],
+          listening: false, name: '_z',
+        }));
+      }
+    });
+    if (drawPts.length >= 3) {
+      const last = drawPts[drawPts.length-1], first = drawPts[0];
+      layer.add(new Konva.Line({
+        points: [last.x, last.y, first.x, first.y],
+        stroke: 'rgba(249,115,22,.35)', strokeWidth: 1.5, dash: [4, 8],
+        listening: false, name: '_z',
+      }));
+    }
+  }
+
+  lanes.forEach(la => {
+    const isSel = selectedId === la.uuid;
+    const c     = PAL[la.ci % PAL.length];
+    const hasSplit = la.cols > 0 && la.rows > 0;
+
+    if (hasSplit) {
+      const g = la.gapPct / 100;
+
+      /* 1) Child zone fills */
+      for (let r = 0; r < la.rows; r++) {
+        for (let col = 0; col < la.cols; col++) {
+          /* Apply visual gap by lerping corners slightly inward */
+          const [TL, TR, BR, BL] = cellCornersN(la, r, col);
+          const cx = (TL.x + TR.x + BR.x + BL.x) / 4;
+          const cy = (TL.y + TR.y + BR.y + BL.y) / 4;
+          const shrink = pt => ({
+            x: pt.x + (cx - pt.x) * g,
+            y: pt.y + (cy - pt.y) * g,
+          });
+          const cellPx = [TL, TR, BR, BL].map(shrink).map(toS);
+          layer.add(new Konva.Line({
+            points: cellPx.flatMap(p => [p.x, p.y]),
+            closed: true,
+            fill: isSel ? c.fill.replace('.18', '.28') : c.fill,
+            stroke: isSel ? '#fff' : c.stroke,
+            strokeWidth: isSel ? 1.8 : 1.3,
+            listening: false, name: '_z',
+          }));
+        }
+      }
+
+      /* 2) Grid lines — connect every adjacent dot with a line */
+      /* Horizontal lines (along each row) */
+      for (let r = 0; r <= la.rows; r++) {
+        for (let col = 0; col < la.cols; col++) {
+          const a = dotS(la, r, col);
+          const b = dotS(la, r, col + 1);
+          const isOuter = (r === 0 || r === la.rows);
+          layer.add(new Konva.Line({
+            points: [a.x, a.y, b.x, b.y],
+            stroke: isSel ? (isOuter ? '#fff' : 'rgba(255,255,255,.6)') : (isOuter ? c.stroke : c.stroke),
+            strokeWidth: isOuter ? (isSel ? 2.2 : 1.8) : (isSel ? 1.4 : 1.0),
+            dash: isOuter ? [] : [4, 3],
+            listening: false, name: '_z',
+          }));
+        }
+      }
+      /* Vertical lines (along each col) */
+      for (let col = 0; col <= la.cols; col++) {
+        for (let r = 0; r < la.rows; r++) {
+          const a = dotS(la, r, col);
+          const b = dotS(la, r + 1, col);
+          const isOuter = (col === 0 || col === la.cols);
+          layer.add(new Konva.Line({
+            points: [a.x, a.y, b.x, b.y],
+            stroke: isSel ? (isOuter ? '#fff' : 'rgba(255,255,255,.6)') : (isOuter ? c.stroke : c.stroke),
+            strokeWidth: isOuter ? (isSel ? 2.2 : 1.8) : (isSel ? 1.4 : 1.0),
+            dash: isOuter ? [] : [4, 3],
+            listening: false, name: '_z',
+          }));
+        }
+      }
+
+      /* 3) Anchor dots — rendered on top of lines */
+      for (let r = 0; r <= la.rows; r++) {
+        for (let col = 0; col <= la.cols; col++) {
+          const sp   = dotS(la, r, col);
+          const isActive = activeDot &&
+                           activeDot.laneId === la.uuid &&
+                           activeDot.row === r &&
+                           activeDot.col === col;
+          const outer = isOuterDot(la, r, col);
+
+          /* Glow ring for active dot */
+          if (isActive) {
+            layer.add(new Konva.Circle({
+              x: sp.x, y: sp.y, radius: DOT_RADIUS + 6,
+              fill: 'rgba(249,115,22,.25)',
+              stroke: '#f97316', strokeWidth: 1.5,
+              listening: false, name: '_z',
+            }));
+          }
+
+          layer.add(new Konva.Circle({
+            x: sp.x, y: sp.y,
+            radius: isActive ? DOT_RADIUS + 2 : (outer ? DOT_RADIUS : DOT_RADIUS - 1),
+            fill: isActive ? '#f97316' : (outer ? '#fff' : 'rgba(255,255,255,.75)'),
+            stroke: isActive ? '#fff' : c.stroke,
+            strokeWidth: 2,
+            listening: false, name: '_z',
+          }));
+        }
+      }
+
+      /* 4) Labels at cell centroids */
+      const lbls = N.labels(la);
+      let idx = 0;
+      for (let r = 0; r < la.rows; r++) {
+        for (let col = 0; col < la.cols; col++) {
+          const corners = cellCornersN(la, r, col);
+          const cp = toS({
+            x: corners.reduce((s, p) => s + p.x, 0) / 4,
+            y: corners.reduce((s, p) => s + p.y, 0) / 4,
+          });
+          const lbl = new Konva.Text({
+            x: cp.x, y: cp.y,
+            text: lbls[idx++] || '',
+            fontSize: Math.max(9, Math.min(13, SW / 90)),
+            fill: '#fff', fontStyle: 'bold', align: 'center',
+            shadowColor: 'rgba(0,0,0,.9)', shadowBlur: 3,
+            shadowOffsetX: 1, shadowOffsetY: 1,
+            listening: false, name: '_z',
+          });
+          lbl.offsetX(lbl.width() / 2);
+          lbl.offsetY(lbl.height() / 2);
+          layer.add(lbl);
+        }
+      }
+
+    } else {
+      /* Unsplit lane — dashed outline + prompt */
+      const qpx = qToS(la.quad);
+      layer.add(new Konva.Line({
+        points: qpx.flatMap(p => [p.x, p.y]),
+        closed: true,
+        fill: isSel ? 'rgba(249,115,22,.14)' : 'rgba(249,115,22,.06)',
+        stroke: isSel ? '#f97316' : 'rgba(249,115,22,.45)',
+        strokeWidth: isSel ? 2 : 1.2, dash: [8, 5],
+        listening: false, name: '_z',
+      }));
+      const cx = qpx.reduce((s, p) => s + p.x, 0) / 4;
+      const cy = qpx.reduce((s, p) => s + p.y, 0) / 4;
+      const lbl = new Konva.Text({
+        x: cx, y: cy, text: '[Set spaces & split]',
+        fontSize: 11, fill: 'rgba(249,115,22,.85)', align: 'center',
+        listening: false, name: '_z',
+      });
+      lbl.offsetX(lbl.width() / 2);
+      lbl.offsetY(lbl.height() / 2);
+      layer.add(lbl);
+    }
+  });
+
+  layer.batchDraw();
+}
+
+/* ================================================================
+   SELECTION / ACTIONS
+================================================================ */
+function deselect() { selectedId = null; activeDot = null; redraw(); refreshList(); }
+
+function deleteSelected() {
+  if (!selectedId) { toast('Select a lane first', 'err'); return; }
+  lanes = lanes.filter(l => l.uuid !== selectedId);
+  if (pendingId === selectedId) {
+    pendingId = null;
+    document.getElementById('btn-split').disabled = true;
+  }
+  selectedId = null; activeDot = null;
+  redraw(); refreshList();
+}
+
+function clearCanvas() {
+  lanes = []; selectedId = null; pendingId = null; activeDot = null;
+  document.getElementById('btn-split').disabled = true;
+  cancelDraw(true); redraw(); refreshList();
+}
+
+/* ================================================================
+   ZONE LIST
+================================================================ */
+function refreshList() {
+  const el = document.getElementById('zlist');
+  const totalSpaces = lanes.reduce((s, l) => s + Math.max(0, l.cols * l.rows), 0);
+  document.getElementById('gcnt').textContent = lanes.length;
+  document.getElementById('scnt').textContent = totalSpaces;
+
+  const items = [];
+  lanes.forEach(la => {
+    const isSel  = selectedId === la.uuid;
+    const total  = la.cols * la.rows;
+    const lbls   = total > 0 ? N.labels(la) : [];
+    const range  = lbls.length ? ` ${lbls[0]}–${lbls[lbls.length-1]}` : '';
+    items.push(`<div class="z-item${isSel ? ' sel' : ''}" onclick="selById('${la.uuid}')">
+      <div>
+        <span class="nm">${la.prefix || '?'} Lane</span>
+        <span class="mt">${total ? total + ' spaces' + range : 'unsplit'}</span>
+      </div>
+      <button class="del" onclick="event.stopPropagation();delById('${la.uuid}')">&times;</button>
+    </div>`);
+  });
+  el.innerHTML = items.length
+    ? items.join('')
+    : '<div style="color:var(--text-secondary);font-size:12px;">No lanes yet.</div>';
+}
+
+function selById(id) { selectedId = id; activeDot = null; redraw(); refreshList(); }
+function delById(id) {
+  lanes = lanes.filter(l => l.uuid !== id);
+  if (pendingId === id) { pendingId = null; document.getElementById('btn-split').disabled = true; }
+  if (selectedId === id) { selectedId = null; activeDot = null; }
+  redraw(); refreshList();
+}
+
+/* ================================================================
+   CONFIRM MODAL
+================================================================ */
+let confirmMode = null;
+let modalLoading = false;
+let currentOpId  = 0;
+
+function openModal(modeStr) {
+  confirmMode = modeStr;
+  const spaceCount = lanes.reduce((s, l) => s + Math.max(0, l.cols * l.rows), 0);
+  document.getElementById('modal-title').textContent =
+    modeStr === 'clear' ? 'Delete All Zones?' : 'Replace All Zones?';
+  document.getElementById('modal-body').innerHTML = modeStr === 'clear'
+    ? `This will delete <strong>ALL saved zones</strong> for camera <strong>${CAM}</strong>.<br>This action <strong style="color:var(--red)">cannot be undone</strong>.`
+    : `This will <strong>delete existing zones</strong> then save the current canvas (<strong>${spaceCount} spaces</strong>) for camera <strong>${CAM}</strong>.<br>Continue?`;
+  document.getElementById('modal-confirm').textContent  = modeStr === 'clear' ? 'Delete All' : 'Replace';
+  document.getElementById('modal-confirm').className    = 'btn ' + (modeStr === 'clear' ? 'btn-red' : 'btn-orange');
+  setModalLoading(false);
+  document.getElementById('confirm-modal').classList.remove('hidden');
+}
+function _forceCloseModal() {
+  modalLoading = false;
+  document.getElementById('confirm-modal').classList.add('hidden');
+  confirmMode = null;
+}
+function closeModal() { if (modalLoading) return; _forceCloseModal(); }
+function setModalLoading(on) {
+  modalLoading = on;
+  document.getElementById('modal-confirm').disabled = on;
+  document.getElementById('modal-cancel').disabled  = on;
+  document.getElementById('modal-confirm').textContent = on
+    ? 'Working…' : (confirmMode === 'clear' ? 'Delete All' : 'Replace');
+}
+async function runModalAction() {
+  if (!confirmMode || modalLoading) return;
+  const opId = ++currentOpId;
+  const m    = confirmMode;
+  setModalLoading(true);
+  try {
+    if (m === 'clear') {
+      await serverDeleteAll();
+      if (opId !== currentOpId) return;
+      clearCanvas(); _forceCloseModal();
+      toast('All zones deleted', 'ok');
+    } else {
+      await serverDeleteAll();
+      if (opId !== currentOpId) return;
+      const saved = await serverSave();
+      if (opId !== currentOpId) return;
+      clearCanvas();
+      await loadExisting(true);
+      if (opId !== currentOpId) return;
+      _forceCloseModal();
+      toast(`Replaced and saved ${saved} zones ✓`, 'ok');
+    }
+  } catch(e) {
+    if (opId === currentOpId) { _forceCloseModal(); toast('Error: ' + e.message, 'err'); }
+  }
+}
+
+/* ================================================================
+   SERVER HELPERS
+================================================================ */
+async function serverDeleteAll() {
+  const r = await fetch('/admin/zones/delete-all', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ camera_id: CAM }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'Delete failed');
+}
+
+async function serverSave() {
+  const payload = buildPayload();
+  if (!payload.length) return 0;
+  const r = await fetch('/admin/zones/bulk', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ camera_id: CAM, zones: payload, clear_existing: false }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'Save failed');
+  return d.saved || payload.length;
+}
+
+/* ================================================================
+   BUILD PAYLOAD
+   Serialises each child zone as a 4-point polygon in % coords.
+   Lane metadata (full pts grid) is stored in the `name` field of
+   the first zone as __campark_meta__{...} for perfect round-trip.
+================================================================ */
+function buildPayload() {
+  const payload = [];
+  lanes.forEach(la => {
+    if (la.cols < 1 || la.rows < 1) return;
+    const lbls = N.labels(la);
+    let idx = 0;
+
+    const meta = JSON.stringify({
+      pts:    la.pts,
+      cols:   la.cols,
+      rows:   la.rows,
+      start:  la.start,
+      dir:    la.dir,
+      gapPct: la.gapPct,
+      prefix: la.prefix,
+      ci:     la.ci,
+    });
+
+    for (let r = 0; r < la.rows; r++) {
+      for (let col = 0; col < la.cols; col++) {
+        /* Full-coverage polygon (gap=0) for YOLO detection accuracy */
+        const corners = cellCornersN(la, r, col);
+        const pts4 = corners.map(p => [
+          +(p.x * 100).toFixed(4),
+          +(p.y * 100).toFixed(4),
+        ]);
+        const lbl     = lbls[idx++] || `Z${idx}`;
+        const isFirst = (r === 0 && col === 0);
+        payload.push({
+          zone_id:        lbl,
+          name:           isFirst ? '__campark_meta__' + meta : lbl,
+          capacity_units: 1,
+          polygon_json:   JSON.stringify(pts4),
+        });
+      }
+    }
+  });
+  return payload;
+}
+
+/* ================================================================
+   SAVE ALL
+================================================================ */
+async function saveZones() {
+  const payload = buildPayload();
+  if (!payload.length) { toast('No spaces to save', 'err'); return; }
+  setActionBtns(true);
+  try {
+    const r = await fetch('/admin/zones/bulk', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ camera_id: CAM, zones: payload, clear_existing: false }),
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Save failed', 'err'); return; }
+    toast(`Saved ${d.saved} zones ✓`, 'ok');
+  } catch(e) { toast('Network error: ' + e.message, 'err'); }
+  finally { setActionBtns(false); }
+}
+
+function setActionBtns(disabled) {
+  ['btn-save', 'btn-clear', 'btn-replace'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+
+/* ================================================================
+   LOAD EXISTING (on page load or after replace)
+
+   PRIMARY PATH — metadata round-trip (zones saved by this editor):
+     The `name` field of the first zone of each lane contains
+     "__campark_meta__<JSON>" with the full LaneArea definition.
+     → Perfect reconstruction: exact quad, exact dividers, exact gap.
+
+   FALLBACK PATH — legacy zones (saved by old editor, no metadata):
+     Reconstruct from compartment polygon outer corners.
+     gapPct assumed 0 (conservative), dividers uniform.
+
+   silent=true suppresses toast (used after Replace).
+================================================================ */
+async function loadExisting(silent=false){
+  try{
+    const r=await fetch('/admin/zones/editor-raw.json?camera_id='+CAM);
+    const d=await r.json();
+    if(!d.zones?.length)return;
+
+    /* ---- separate meta-bearing zones from regular zones ---- */
+    const metaByPrefix={};   // prefix → parsed LaneArea
+    const regularZones=[];
+
+    d.zones.forEach(z=>{
+      const nameStr=z.name||'';
+      if(nameStr.startsWith('__campark_meta__')){
+        try{
+          const la=JSON.parse(nameStr.slice('__campark_meta__'.length));
+          la.uuid=uuid();
+          la.ci=(la.ci!=null?la.ci:palIdx)%PAL.length;
+          palIdx++;
+
+          /* NEW FORMAT: pts grid */
+          if(Array.isArray(la.pts)&&la.pts.length>=2){
+            /* Normalise pts if stored in % space (legacy) */
+            const maxV=Math.max(...la.pts.flatMap(row=>row.flatMap(p=>[p.x,p.y])));
+            if(maxV>1)la.pts=la.pts.map(row=>row.map(p=>({x:p.x/100,y:p.y/100})));
+            la.pts=la.pts.map(row=>row.map(p=>G.clampN(p)));
+            /* Derive quad from outer corners for unsplit rendering fallback */
+            const R=la.rows,C=la.cols;
+            la.quad=[la.pts[0][0],la.pts[0][C],la.pts[R][C],la.pts[R][0]];
+
+          /* LEGACY FORMAT: quad + dividersU/V — upgrade to pts grid */
+          }else if(Array.isArray(la.quad)){
+            const maxCoord=Math.max(...la.quad.flatMap(p=>[p.x,p.y]));
+            if(maxCoord>1)la.quad=la.quad.map(p=>({x:p.x/100,y:p.y/100}));
+            la.quad=G.orderQuad(la.quad.map(p=>G.clampN(p)));
+            if(!Array.isArray(la.dividersU)||la.dividersU.length<2)
+              la.dividersU=Array.from({length:la.cols+1},(_,i)=>i/la.cols);
+            if(!Array.isArray(la.dividersV)||la.dividersV.length<2)
+              la.dividersV=Array.from({length:la.rows+1},(_,i)=>i/la.rows);
+            /* Convert dividers → pts grid */
+            la.pts=[];
+            for(let r=0;r<=la.rows;r++){
+              const row=[];
+              for(let c=0;c<=la.cols;c++){
+                const u=la.dividersU[c],v=la.dividersV[r];
+                const[TL,TR,BR,BL]=la.quad;
+                row.push(G.clampN({
+                  x:TL.x*(1-u)*(1-v)+TR.x*u*(1-v)+BR.x*u*v+BL.x*(1-u)*v,
+                  y:TL.y*(1-u)*(1-v)+TR.y*u*(1-v)+BR.y*u*v+BL.y*(1-u)*v,
+                }));
+              }
+              la.pts.push(row);
+            }
+          }else{ return; }
+
+          metaByPrefix[la.prefix]=la;
+        }catch(e){ console.warn('meta parse failed',e); }
+        return; // don't add to regularZones
+      }
+      regularZones.push(z);
+    });
+
+    /* ---- Add lanes that have metadata (primary path) ---- */
+    Object.values(metaByPrefix).forEach(la=>lanes.push(la));
+
+    /* ---- FALLBACK: handle zones with no metadata ---- */
+    /* Only process prefixes NOT already covered by metadata */
+    const coveredPrefixes=new Set(Object.keys(metaByPrefix));
+    const legacyZones=regularZones.filter(z=>{
+      const m=z.zone_id.match(/^([A-Za-z]+)(\d+)$/);
+      return m&&!coveredPrefixes.has(m[1]);
+    });
+
+    if(legacyZones.length){
+      /* Group by prefix, parse polygons */
+      const byPrefix={};
+      legacyZones.forEach(z=>{
+        const m=z.zone_id.match(/^([A-Za-z]+)(\d+)$/);
+        if(!m)return;
+        const pfx=m[1],num=parseInt(m[2]);
+        let poly=[];
+        try{ poly=JSON.parse(z.polygon_json||'[]'); }catch(_){ return; }
+        if(poly.length<4)return;
+        /* Normalise */
+        const maxVal=Math.max(...poly.flat());
+        const norm=maxVal>1?100:1;
+        const pts=G.orderQuad(poly.map(p=>G.clampN({x:p[0]/norm,y:p[1]/norm})));
+        if(!byPrefix[pfx])byPrefix[pfx]=[];
+        byPrefix[pfx].push({num,pts});
+      });
+
+      Object.entries(byPrefix).forEach(([pfx,zs])=>{
+        zs.sort((a,b)=>a.num-b.num);
+        const n=zs.length;
+        /* Reconstruct parent quad from outer corners of the ordered set */
+        const quad=G.orderQuad([
+          G.clampN(zs[0].pts[0]),      // TL of first zone
+          G.clampN(zs[n-1].pts[1]),    // TR of last zone
+          G.clampN(zs[n-1].pts[2]),    // BR of last zone
+          G.clampN(zs[0].pts[3]),      // BL of first zone
+        ]);
+        /* Recover dividers by inverse-mapping zone TR corners */
+        const dividersU=[0];
+        for(let k=0;k<n-1;k++){
+          const uv=G.imgToUv(quad,zs[k].pts[1]);
+          const prev=dividersU[dividersU.length-1];
+          dividersU.push(Math.min(1-MIN_GAP*(n-k),Math.max(prev+MIN_GAP,uv.u)));
+        }
+        dividersU.push(1);
+
+        /* Convert recovered dividers → pts grid */
+        const recPts=[];
+        for(let rv=0;rv<=1;rv++){
+          const row=[];
+          for(let k=0;k<=n;k++){
+            const u=dividersU[k],v=rv;
+            const[TL,TR,BR,BL]=quad;
+            row.push(G.clampN({
+              x:TL.x*(1-u)*(1-v)+TR.x*u*(1-v)+BR.x*u*v+BL.x*(1-u)*v,
+              y:TL.y*(1-u)*(1-v)+TR.y*u*(1-v)+BR.y*u*v+BL.y*(1-u)*v,
+            }));
+          }
+          recPts.push(row);
+        }
+        lanes.push({
+          uuid:uuid(),quad,pts:recPts,prefix:pfx,start:zs[0].num,
+          cols:n,rows:1,dir:'inc',gapPct:0,
+          ci:palIdx++%PAL.length,
+        });
+      });
+    }
+
+    /* Reset interaction state — never enter draw mode on load */
+    mode=IDLE;drawPts=[];drag=null;
+    if(konva)konva.container().style.cursor='default';
+
+    redraw();refreshList();
+    const total=d.zones.length;
+    if(!silent)toast('Loaded '+total+' existing zones','ok');
+  }catch(e){
+    console.warn('loadExisting error:',e);
+  }
+}
+
+/* ================================================================
+   UI HELPERS
+================================================================ */
+function setFooter(html,active){
+  const el=document.getElementById('footer');
+  el.innerHTML=html;
+  el.className='canvas-footer'+(active?' active':'');
+}
+function toast(msg,type){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t=document.createElement('div');
+  t.className='toast toast-'+type;t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+</script>
+</body>
+</html>

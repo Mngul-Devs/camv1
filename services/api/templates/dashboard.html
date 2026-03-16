@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Command Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark); color: var(--text-primary); min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card); border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .navbar h1 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .navbar h1::before { content: "●"; color: var(--status-green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--text-secondary); text-decoration: none; padding: 8px 16px;
+      border-radius: 6px; font-size: 14px; transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active { background: var(--bg-hover); color: var(--text-primary); }
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .section-title {
+      font-size: 14px; font-weight: 600; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+    }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 32px;
+    }
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: 12px; padding: 20px;
+    }
+    .card-label {
+      font-size: 12px; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .card-value { font-size: 32px; font-weight: 700; line-height: 1; }
+    .card-sub { font-size: 13px; color: var(--text-secondary); margin-top: 8px; }
+    .status-row { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+      padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.05);
+    }
+    .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-green { background: var(--status-green); }
+    .dot-yellow { background: var(--status-yellow); }
+    .dot-red { background: var(--status-red); }
+
+    /* Chart section */
+    .chart-section {
+      display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px;
+    }
+    @media (max-width: 1000px) { .chart-section { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: 12px; padding: 20px;
+    }
+    .chart-card .header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+    }
+    .chart-card .header h3 { font-size: 14px; font-weight: 600; }
+    .chart-canvas-wrap { position: relative; height: 280px; }
+    .stat-list { list-style: none; }
+    .stat-list li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid var(--border-color);
+    }
+    .stat-list li:last-child { border-bottom: none; }
+    .stat-list .label { font-size: 13px; color: var(--text-secondary); }
+    .stat-list .value { font-size: 18px; font-weight: 700; }
+    .stat-list .sub { font-size: 11px; color: var(--text-secondary); }
+    .conf-bar { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--text-secondary); }
+    .conf-bar span { display: flex; align-items: center; gap: 4px; }
+    .conf-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .time-filter { display: flex; gap: 4px; }
+    .time-filter button {
+      background: var(--bg-hover); border: none; color: var(--text-secondary);
+      padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
+    }
+    .time-filter button.active, .time-filter button:hover { background: var(--accent-blue); color: white; }
+
+    .wide-grid {
+      display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px;
+    }
+    @media (max-width: 900px) { .wide-grid { grid-template-columns: 1fr; } }
+    .table-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: 12px; overflow: hidden;
+    }
+    .table-card .header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .table-card .header h3 { font-size: 14px; font-weight: 600; }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card th, .table-card td {
+      padding: 12px 20px; text-align: left; font-size: 13px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .table-card th { color: var(--text-secondary); font-weight: 500; background: rgba(0,0,0,0.2); }
+    .table-card tr:last-child td { border-bottom: none; }
+    .table-card tr:hover td { background: var(--bg-hover); }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-online { background: rgba(34,197,94,0.15); color: var(--status-green); }
+    .badge-stale { background: rgba(234,179,8,0.15); color: var(--status-yellow); }
+    .badge-offline { background: rgba(239,68,68,0.15); color: var(--status-red); }
+    .badge-unknown { background: rgba(100,116,139,0.15); color: var(--text-secondary); }
+    .refresh-btn {
+      background: var(--bg-hover); border: none; color: var(--text-secondary);
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .refresh-btn:hover { background: var(--accent-blue); color: white; }
+    .timestamp { font-size: 12px; color: var(--text-secondary); text-align: right; margin-top: 16px; }
+    #load-error {
+      display: none; background: rgba(239,68,68,0.15); color: #ef4444;
+      padding: 12px 20px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark Command Center</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard" class="active">Dashboard</a>
+      <a href="/admin/cameras">Cameras</a>
+      <a href="/admin/zones">Zones</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/integrations">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div id="load-error"></div>
+
+    <!-- Overview Cards -->
+    <div class="section-title">System Overview</div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Total Sites</div>
+        <div class="card-value" id="total-sites">-</div>
+        <div class="card-sub" id="total-projects">- projects</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Cameras</div>
+        <div class="card-value" id="total-cameras">-</div>
+        <div class="status-row">
+          <span class="status-chip"><span class="dot dot-green"></span><span id="cam-online">0</span> online</span>
+          <span class="status-chip"><span class="dot dot-yellow"></span><span id="cam-stale">0</span> stale</span>
+          <span class="status-chip"><span class="dot dot-red"></span><span id="cam-offline">0</span> offline</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Zones</div>
+        <div class="card-value" id="total-zones">-</div>
+        <div class="status-row">
+          <span class="status-chip"><span class="dot dot-green"></span><span id="zone-free">0</span> free</span>
+          <span class="status-chip"><span class="dot dot-red"></span><span id="zone-full">0</span> full</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Events (24h)</div>
+        <div class="card-value" id="events-24h">-</div>
+        <div class="card-sub"><span id="events-1h">-</span> in last hour</div>
+      </div>
+    </div>
+
+    <!-- Detection Chart + Stats -->
+    <div class="section-title">Vehicle Detections</div>
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="header">
+          <h3>Detections &amp; Snapshot Throughput</h3>
+          <div class="time-filter">
+            <button onclick="loadDetections(6)" id="tf-6">6h</button>
+            <button onclick="loadDetections(24)" id="tf-24" class="active">24h</button>
+            <button onclick="loadDetections(72)" id="tf-72">3d</button>
+            <button onclick="loadDetections(168)" id="tf-168">7d</button>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="detection-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="header"><h3>Detection Summary</h3></div>
+        <ul class="stat-list" id="detection-stats">
+          <li style="text-align:center;color:var(--text-secondary);padding:40px 0;">
+            No detections yet.<br><span style="font-size:12px">Enable YOLO to start detecting vehicles.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- System Health Cards -->
+    <div class="section-title">System Health</div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">FTP Ingest Rate</div>
+        <div class="card-value" id="ftp-rate">-</div>
+        <div class="card-sub">snapshots/hour</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Inference Queue</div>
+        <div class="card-value" id="queue-pending">-</div>
+        <div class="card-sub">pending | <span id="queue-delay">-</span>s avg delay</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Disk Usage</div>
+        <div class="card-value" id="disk-used">-</div>
+        <div class="card-sub"><span id="disk-free">-</span> free | <span id="snap-disk">-</span> snapshots</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Snapshots</div>
+        <div class="card-value" id="total-snapshots">-</div>
+        <div class="card-sub"><span id="tokens-today">0</span> API tokens today</div>
+      </div>
+    </div>
+
+    <!-- Tables -->
+    <div class="wide-grid">
+      <div class="table-card">
+        <div class="header">
+          <h3>Camera Status</h3>
+          <button class="refresh-btn" onclick="loadData()">Refresh</button>
+        </div>
+        <table>
+          <thead><tr><th>Camera ID</th><th>Name</th><th>Status</th><th>Last Seen</th><th>Snap/h</th></tr></thead>
+          <tbody id="camera-table"></tbody>
+        </table>
+      </div>
+      <div class="table-card">
+        <div class="header">
+          <h3>Recent Events</h3>
+          <a href="/admin/events" class="refresh-btn">View All</a>
+        </div>
+        <table>
+          <thead><tr><th>Zone</th><th>Change</th><th>Time</th></tr></thead>
+          <tbody id="events-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="timestamp">Last updated: <span id="last-update">-</span></div>
+  </div>
+
+  <script>
+    let detectionChart = null;
+    const CLASS_COLORS = {
+      car:        { bg: 'rgba(59,130,246,0.3)',  border: '#3b82f6' },
+      truck:      { bg: 'rgba(234,179,8,0.3)',   border: '#eab308' },
+      motorcycle: { bg: 'rgba(139,92,246,0.3)',  border: '#8b5cf6' },
+      bicycle:    { bg: 'rgba(6,182,212,0.3)',   border: '#06b6d4' },
+      unknown:    { bg: 'rgba(148,163,184,0.3)', border: '#94a3b8' },
+    };
+
+    /* ── Main dashboard data ── */
+    async function loadData() {
+      try {
+        const resp = await fetch('/admin/dashboard.json', { credentials: 'same-origin' });
+        if (!resp.ok) { if (resp.status === 401) { window.location.reload(); return; } throw new Error('Server ' + resp.status); }
+        const data = await resp.json();
+
+        setText('total-sites', data.totals.sites);
+        setText('total-projects', (data.totals.projects || 0) + ' projects');
+        setText('total-cameras', data.totals.cameras);
+        setText('cam-online', data.totals.cameras_online);
+        setText('cam-stale', data.totals.cameras_stale);
+        setText('cam-offline', data.totals.cameras_offline);
+        setText('total-zones', data.totals.zones);
+        setText('zone-free', data.totals.zones_free);
+        setText('zone-full', data.totals.zones_full);
+        setText('events-24h', data.totals.events_24h);
+        setText('events-1h', data.totals.events_1h);
+        setText('ftp-rate', data.system.ftp_rate_hour);
+        setText('queue-pending', data.system.queue_pending);
+        setText('queue-delay', data.system.queue_delay_sec);
+        setText('disk-used', data.system.disk_used || 'N/A');
+        setText('disk-free', data.system.disk_free || 'N/A');
+        setText('snap-disk', data.system.snap_disk || 'N/A');
+        setText('tokens-today', data.system.tokens_today);
+        setText('total-snapshots', data.totals.snapshots_total || 0);
+
+        const camTbody = document.getElementById('camera-table');
+        if (!data.cameras.length) {
+          camTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px;">No cameras registered</td></tr>';
+        } else {
+          camTbody.innerHTML = data.cameras.slice(0, 8).map(c => `<tr>
+            <td><a href="/admin/zones/${c.camera_id}/editor" style="color:var(--accent-blue);text-decoration:none">${c.camera_id}</a></td>
+            <td>${c.name || '-'}</td>
+            <td><span class="badge badge-${c.status.toLowerCase()}">${c.status}</span></td>
+            <td>${c.last_seen_at ? formatTime(c.last_seen_at) : 'Never'}</td>
+            <td>${c.snapshots_1h}</td></tr>`).join('');
+        }
+
+        const evtTbody = document.getElementById('events-table');
+        if (!data.recent_events.length) {
+          evtTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-secondary);padding:24px;">No events yet</td></tr>';
+        } else {
+          evtTbody.innerHTML = data.recent_events.slice(0, 6).map(e => `<tr>
+            <td>${e.zone_id}</td><td>${e.old_state} &rarr; ${e.new_state}</td><td>${formatTime(e.triggered_at)}</td></tr>`).join('');
+        }
+
+        setText('last-update', new Date().toLocaleTimeString());
+        document.getElementById('load-error').style.display = 'none';
+      } catch (err) {
+        console.error('Dashboard error:', err);
+        const el = document.getElementById('load-error');
+        el.style.display = 'block';
+        el.textContent = 'Failed to load data: ' + err.message;
+      }
+    }
+
+    /* ── Detection chart ── */
+    let _currentHours = 24;
+    async function loadDetections(hours) {
+      if (hours !== undefined) _currentHours = hours;
+      document.querySelectorAll('.time-filter button').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('tf-' + _currentHours);
+      if (btn) btn.classList.add('active');
+
+      try {
+        const resp = await fetch('/admin/dashboard-detections.json?hours=' + _currentHours, { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderChart(data, _currentHours);
+        renderStats(data);
+      } catch (err) {
+        console.error('Detection chart error:', err);
+      }
+    }
+
+    function renderChart(data, hours) {
+      const ctx = document.getElementById('detection-chart').getContext('2d');
+
+      // Snapshot throughput
+      const snapData = data.snapshot_throughput.map(s => ({ x: s.time, y: s.count }));
+
+      // Detection classes
+      const allClasses = new Set();
+      data.detection_buckets.forEach(b => Object.keys(b.classes).forEach(c => allClasses.add(c)));
+
+      const datasets = [];
+
+      // Snapshots line (always)
+      datasets.push({
+        label: 'Snapshots/hr',
+        data: snapData,
+        borderColor: 'rgba(148,163,184,0.6)',
+        backgroundColor: 'rgba(148,163,184,0.08)',
+        borderDash: [5, 3],
+        fill: true,
+        tension: 0.3,
+        yAxisID: 'y1',
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        order: 10,
+      });
+
+      // Detection bars
+      for (const cls of allClasses) {
+        const color = CLASS_COLORS[cls] || CLASS_COLORS.unknown;
+        datasets.push({
+          label: cls.charAt(0).toUpperCase() + cls.slice(1),
+          data: data.detection_buckets.map(b => ({
+            x: b.time,
+            y: b.classes[cls] ? b.classes[cls].count : 0,
+          })),
+          backgroundColor: color.bg,
+          borderColor: color.border,
+          borderWidth: 1.5,
+          type: 'bar',
+          yAxisID: 'y',
+          order: 5,
+          barPercentage: 0.7,
+        });
+      }
+
+      if (detectionChart) detectionChart.destroy();
+      detectionChart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', usePointStyle: true, pointStyle: 'rectRounded', font: { size: 11 } }
+            },
+            tooltip: {
+              backgroundColor: '#1e293b', titleColor: '#f1f5f9', bodyColor: '#94a3b8',
+              borderColor: '#334155', borderWidth: 1,
+              callbacks: {
+                title: items => items.length ? new Date(items[0].parsed.x || items[0].label).toLocaleString() : ''
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: hours <= 24 ? 'hour' : 'day', displayFormats: { hour: 'HH:mm', day: 'MMM d' } },
+              ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 0 },
+              grid: { color: 'rgba(51,65,85,0.3)' }
+            },
+            y: {
+              position: 'left', beginAtZero: true,
+              title: { display: true, text: 'Detections', color: '#94a3b8', font: { size: 11 } },
+              ticks: { color: '#64748b', font: { size: 10 }, stepSize: 1 },
+              grid: { color: 'rgba(51,65,85,0.3)' }
+            },
+            y1: {
+              position: 'right', beginAtZero: true,
+              title: { display: true, text: 'Snapshots/hr', color: '#94a3b8', font: { size: 11 } },
+              ticks: { color: '#64748b', font: { size: 10 } },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+    }
+
+    function renderStats(data) {
+      const el = document.getElementById('detection-stats');
+      const classes = Object.entries(data.totals_by_class);
+
+      if (!classes.length) {
+        el.innerHTML = `<li style="text-align:center;color:var(--text-secondary);padding:40px 0;">
+          No detections yet.<br><span style="font-size:12px">Enable YOLO to start detecting vehicles.</span></li>`;
+        return;
+      }
+
+      el.innerHTML = classes.map(([cls, s]) => {
+        const color = (CLASS_COLORS[cls] || CLASS_COLORS.unknown).border;
+        return `<li>
+          <div>
+            <div class="label" style="display:flex;align-items:center;gap:6px">
+              <span class="conf-dot" style="background:${color}"></span>
+              ${cls.charAt(0).toUpperCase() + cls.slice(1)}
+            </div>
+            <div class="conf-bar">
+              <span>avg: <strong>${s.avg_conf}</strong></span>
+              <span>min: ${s.min_conf}</span>
+              <span>max: ${s.max_conf}</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="value">${s.count.toLocaleString()}</div>
+            <div class="sub">detections</div>
+          </div>
+        </li>`;
+      }).join('');
+    }
+
+    /* ── Helpers ── */
+    function setText(id, val) { document.getElementById(id).textContent = val ?? 0; }
+    function formatTime(iso) {
+      if (!iso) return '-';
+      const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (sec < 60) return sec + 's ago';
+      if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+      if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+      return new Date(iso).toLocaleDateString();
+    }
+
+    /* ── Init ── */
+    loadData();
+    loadDetections(24);
+    setInterval(loadData, 30000);
+    setInterval(() => loadDetections(), 60000);
+  </script>
+</body>
+</html>

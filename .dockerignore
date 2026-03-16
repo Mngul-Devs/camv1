@@ -1,0 +1,11 @@
+# Exclude runtime data directories from Docker build context
+data/
+local_tuning/
+archive/
+artifacts/
+docs/
+claude-cookbook/
+frontendv2/
+models/*.onnx
+*.pt
+.git/

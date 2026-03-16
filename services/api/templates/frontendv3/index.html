@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark Frontend V3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/frontendv3/style.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Provider Service WebApp</p>
+        <h1>Frontend V3</h1>
+        <p class="subtitle">Operate projects, clients, and cameras while tracking endpoint health, failures, and rateflow.</p>
+      </div>
+      <div class="actions">
+        <a href="/admin/scada-legacy" class="btn btn-ghost">Open Default V1</a>
+        <span id="updated-at" class="mono">Updated: --</span>
+        <button id="refresh" class="btn">Refresh</button>
+      </div>
+    </header>
+
+    <section class="grid-two">
+      <article class="card">
+        <h2>Create Isolated Project</h2>
+        <p class="hint">Creates dedicated project + site + optional API client for one customer.</p>
+        <form id="project-form" class="form-grid">
+          <label>
+            Project Name
+            <input id="project-name" type="text" placeholder="CLIENT_BRAVO" required>
+          </label>
+          <label>
+            Site Name
+            <input id="site-name" type="text" placeholder="BRAVO_SITE_01">
+          </label>
+          <label>
+            Client Name
+            <input id="client-name" type="text" placeholder="CLIENT_BRAVO_API">
+          </label>
+          <label>
+            Rate Limit / Minute
+            <input id="rate-limit" type="number" min="1" value="120">
+          </label>
+          <label class="check">
+            <input id="create-client" type="checkbox" checked>
+            <span>Create API Client</span>
+          </label>
+          <button class="btn" type="submit">Create Project</button>
+        </form>
+        <div id="project-output" class="output muted">No actions yet.</div>
+      </article>
+
+      <article class="card">
+        <h2>Attach Camera to Site</h2>
+        <p class="hint">Adds camera under the correct site so zones stay project-isolated.</p>
+        <form id="camera-form" class="form-grid">
+          <label>
+            Site ID
+            <input id="camera-site-id" type="number" min="1" required>
+          </label>
+          <label>
+            Camera ID
+            <input id="camera-id" type="text" placeholder="CAM_BRAVO_01" required>
+          </label>
+          <label>
+            Camera Name
+            <input id="camera-name" type="text" placeholder="Entrance Camera">
+          </label>
+          <label>
+            FTP Username
+            <input id="ftp-username" type="text" placeholder="cam_bravo_01" required>
+          </label>
+          <label>
+            FTP Password
+            <input id="ftp-password" type="text" placeholder="password" required>
+          </label>
+          <button class="btn" type="submit">Create Camera</button>
+        </form>
+        <div id="camera-output" class="output muted">No actions yet.</div>
+      </article>
+    </section>
+
+    <section class="card table-card">
+      <h2>Project Isolation Map</h2>
+      <p class="hint">Each project should contain its own client(s), site(s), cameras, and zones only.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Sites</th>
+              <th>Clients</th>
+              <th>Cameras</th>
+              <th>Zones</th>
+            </tr>
+          </thead>
+          <tbody id="project-table">
+            <tr><td colspan="5" class="muted">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="kpi-grid">
+      <article class="card">
+        <h2>24h Requests</h2>
+        <p id="kpi-total" class="value">0</p>
+      </article>
+      <article class="card">
+        <h2>200 Healthy Rate</h2>
+        <p id="kpi-healthy" class="value">0%</p>
+      </article>
+      <article class="card">
+        <h2>Failed (4xx/5xx)</h2>
+        <p id="kpi-failed" class="value">0</p>
+      </article>
+      <article class="card">
+        <h2>Active Clients</h2>
+        <p id="kpi-clients" class="value">0</p>
+      </article>
+    </section>
+
+    <section class="card health-row">
+      <h2>Server Health</h2>
+      <div class="pill-row">
+        <span id="health-api" class="pill">API: --</span>
+        <span id="health-db" class="pill">DB: --</span>
+      </div>
+    </section>
+
+    <section class="grid-two">
+      <article class="card table-card">
+        <h2>API Endpoints You Pushed</h2>
+        <p class="hint">Per endpoint totals, success/fail, and average response time.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Total</th>
+                <th>200%</th>
+                <th>Failed</th>
+                <th>Avg ms</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody id="endpoint-table">
+              <tr><td colspan="7" class="muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card table-card">
+        <h2>Rate Flow (Last 60 Minutes)</h2>
+        <p class="hint">Requests per minute for the last hour.</p>
+        <div id="flow-list" class="flow-list">
+          <p class="muted">Loading...</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="card table-card">
+      <h2>Client Endpoint Success / Failed Rate</h2>
+      <p class="hint">Per client + endpoint success rate, failure count, and rateflow usage.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Total</th>
+              <th>Success%</th>
+              <th>Failed</th>
+              <th>Calls/min</th>
+              <th>Rateflow%</th>
+            </tr>
+          </thead>
+          <tbody id="client-endpoint-table">
+            <tr><td colspan="8" class="muted">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card table-card">
+      <h2>Recent Push Logs</h2>
+      <p class="hint">Latest API calls with status code and latency.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Client</th>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Status</th>
+              <th>Latency</th>
+              <th>Tokens</th>
+            </tr>
+          </thead>
+          <tbody id="log-table">
+            <tr><td colspan="7" class="muted">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/frontendv3/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - System Health</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 { font-size: 20px; font-weight: 600; }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h2 { font-size: 24px; font-weight: 600; }
+    
+    .status-banner {
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-banner.healthy {
+      background: rgba(34,197,94,0.15);
+      border: 1px solid var(--status-green);
+    }
+    .status-banner.degraded {
+      background: rgba(234,179,8,0.15);
+      border: 1px solid var(--status-yellow);
+    }
+    .status-banner.critical {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid var(--status-red);
+    }
+    .status-banner .icon {
+      font-size: 24px;
+    }
+    .status-banner .text {
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .status-banner .sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .section-body { padding: 20px; }
+    
+    .service-list { display: flex; flex-direction: column; gap: 12px; }
+    .service-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--bg-dark);
+      border-radius: 8px;
+      gap: 12px;
+    }
+    .service-status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .service-status.up { background: var(--status-green); }
+    .service-status.down { background: var(--status-red); }
+    .service-status.degraded { background: var(--status-yellow); }
+    .service-name { font-weight: 500; flex: 1; }
+    .service-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .metric-card {
+      background: var(--bg-dark);
+      padding: 16px;
+      border-radius: 8px;
+    }
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .metric-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    
+    .progress-bar {
+      height: 8px;
+      background: var(--bg-hover);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-bar .fill {
+      height: 100%;
+      background: var(--status-green);
+      transition: width 0.3s;
+    }
+    .progress-bar .fill.warning { background: var(--status-yellow); }
+    .progress-bar .fill.danger { background: var(--status-red); }
+    
+    .config-list { font-size: 13px; }
+    .config-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .config-item:last-child { border-bottom: none; }
+    .config-key { color: var(--text-secondary); }
+    .config-value { font-family: monospace; }
+    
+    .btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--bg-hover); }
+
+    /* Operating hours settings panel */
+    .settings-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-end;
+    }
+    .settings-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 140px;
+    }
+    .settings-field label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .settings-field select,
+    .settings-field input[type="number"] {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    .settings-field select:focus,
+    .settings-field input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+    .settings-field .field-hint {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .save-status {
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .save-status.ok  { background: rgba(34,197,94,0.15); color: var(--status-green); display: inline-block; }
+    .save-status.err { background: rgba(239,68,68,0.15);  color: var(--status-red);   display: inline-block; }
+
+    /* Hours timeline preview */
+    .hours-timeline {
+      height: 20px;
+      background: var(--bg-dark);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      margin-top: 12px;
+    }
+    .hours-timeline .active-window {
+      position: absolute;
+      top: 0; bottom: 0;
+      background: rgba(59,130,246,0.35);
+      border-left: 2px solid var(--accent-blue);
+      border-right: 2px solid var(--accent-blue);
+      transition: left 0.3s, width 0.3s;
+    }
+    .hours-timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    
+    .alert-config {
+      background: var(--bg-dark);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .alert-config .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .alert-config .header h4 { font-size: 14px; }
+    .alert-config .status-chip {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .alert-config .status-chip.enabled { background: rgba(34,197,94,0.15); color: var(--status-green); }
+    .alert-config .status-chip.disabled { background: rgba(100,116,139,0.15); color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/cameras">Cameras</a>
+      <a href="/admin/zones">Zones</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/integrations">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system" class="active">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>System Health</h2>
+      <button class="btn btn-secondary" onclick="loadAll()">Refresh</button>
+    </div>
+    
+    <!-- Overall Status Banner -->
+    <div class="status-banner healthy" id="status-banner">
+      <span class="icon">✓</span>
+      <span class="text" id="status-text">All systems operational</span>
+      <span class="sub" id="status-uptime">Uptime: -</span>
+    </div>
+    
+    <div class="grid-2">
+      <!-- Services Status -->
+      <div class="section">
+        <div class="section-header">Services</div>
+        <div class="section-body">
+          <div class="service-list" id="services-list">
+            <div class="service-item">
+              <div class="service-status"></div>
+              <div class="service-name">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Resource Usage -->
+      <div class="section">
+        <div class="section-header">Resources</div>
+        <div class="section-body">
+          <div class="metric-grid">
+            <div class="metric-card">
+              <div class="metric-label">Disk Usage</div>
+              <div class="metric-value" id="disk-percent">-</div>
+              <div class="metric-sub" id="disk-detail">- / -</div>
+              <div class="progress-bar">
+                <div class="fill" id="disk-bar" style="width: 0%"></div>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Database Size</div>
+              <div class="metric-value" id="db-size">-</div>
+              <div class="metric-sub" id="db-rows">- rows</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Images Stored</div>
+              <div class="metric-value" id="image-count">-</div>
+              <div class="metric-sub" id="image-size">-</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Worker Queue</div>
+              <div class="metric-value" id="queue-size">-</div>
+              <div class="metric-sub" id="queue-rate">- processed/min</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="grid-2">
+      <!-- Configuration -->
+      <div class="section">
+        <div class="section-header">Configuration</div>
+        <div class="section-body">
+          <div class="config-list" id="config-list">
+            <div class="config-item">
+              <span class="config-key">Loading...</span>
+              <span class="config-value">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Alerts Configuration -->
+      <div class="section">
+        <div class="section-header">Alert Configuration</div>
+        <div class="section-body">
+          <div class="alert-config" id="telegram-config">
+            <div class="header">
+              <h4>Telegram Alerts</h4>
+              <span class="status-chip disabled" id="telegram-status">Disabled</span>
+            </div>
+            <div class="config-list">
+              <div class="config-item">
+                <span class="config-key">Bot Token</span>
+                <span class="config-value" id="telegram-token">Not configured</span>
+              </div>
+              <div class="config-item">
+                <span class="config-key">Chat ID</span>
+                <span class="config-value" id="telegram-chat">Not configured</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="alert-config" style="margin-top: 12px;">
+            <div class="header">
+              <h4>Health Thresholds</h4>
+            </div>
+            <div class="config-list">
+              <div class="config-item">
+                <span class="config-key">STALE after</span>
+                <span class="config-value" id="stale-seconds">-</span>
+              </div>
+              <div class="config-item">
+                <span class="config-key">OFFLINE after</span>
+                <span class="config-value" id="offline-seconds">-</span>
+              </div>
+              <div class="config-item">
+                <span class="config-key">Health check interval</span>
+                <span class="config-value" id="health-interval">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Operating Hours Settings -->
+    <div class="section">
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Operating Hours &amp; Smart-Skip Settings</span>
+        <span style="font-size:12px; color:var(--text-secondary); font-weight:400;">Changes apply on the next worker cycle — no restart needed</span>
+      </div>
+      <div class="section-body">
+        <div class="settings-grid">
+          <div class="settings-field">
+            <label>Shift Start</label>
+            <select id="setting-start" onchange="updateTimeline()">
+              <!-- filled by JS -->
+            </select>
+            <span class="field-hint">Inference begins at this hour</span>
+          </div>
+          <div class="settings-field">
+            <label>Shift End</label>
+            <select id="setting-end" onchange="updateTimeline()">
+              <!-- filled by JS -->
+            </select>
+            <span class="field-hint">Inference stops at this hour</span>
+          </div>
+          <div class="settings-field" style="min-width:180px;">
+            <label>Scene Diff Threshold</label>
+            <input type="number" id="setting-diff" min="0" max="255" step="0.5" value="6.0"
+                   style="width:100%; box-sizing:border-box;">
+            <span class="field-hint">0 = always infer &nbsp;|&nbsp; higher = skip more duplicates</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-end;">
+            <button class="btn" onclick="saveSettings()">Save Settings</button>
+            <span class="save-status" id="save-status"></span>
+          </div>
+        </div>
+
+        <!-- 24-hour visual timeline -->
+        <div style="margin-top: 20px;">
+          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Active inference window (24-hour view)</div>
+          <div class="hours-timeline">
+            <div class="active-window" id="timeline-window"></div>
+          </div>
+          <div class="hours-timeline-labels">
+            <span>12AM</span><span>3AM</span><span>6AM</span><span>9AM</span>
+            <span>12PM</span><span>3PM</span><span>6PM</span><span>9PM</span><span>12AM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Health Events -->
+    <div class="section">
+      <div class="section-header">Recent Health Events</div>
+      <div class="section-body">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <th style="text-align: left; padding: 10px; color: var(--text-secondary);">Time</th>
+              <th style="text-align: left; padding: 10px; color: var(--text-secondary);">Camera</th>
+              <th style="text-align: left; padding: 10px; color: var(--text-secondary);">Status</th>
+              <th style="text-align: left; padding: 10px; color: var(--text-secondary);">Message</th>
+            </tr>
+          </thead>
+          <tbody id="health-events"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadServices() {
+      const resp = await fetch('/admin/system/services.json');
+      const data = await resp.json();
+      
+      const list = document.getElementById('services-list');
+      list.innerHTML = data.services.map(svc => `
+        <div class="service-item">
+          <div class="service-status ${svc.status}"></div>
+          <div class="service-name">${svc.name}</div>
+          <div class="service-meta">${svc.details || ''}</div>
+        </div>
+      `).join('');
+      
+      // Update banner
+      const allUp = data.services.every(s => s.status === 'up');
+      const anyDown = data.services.some(s => s.status === 'down');
+      const banner = document.getElementById('status-banner');
+      const text = document.getElementById('status-text');
+      
+      banner.className = 'status-banner ' + (anyDown ? 'critical' : (allUp ? 'healthy' : 'degraded'));
+      text.textContent = anyDown ? 'System degraded' : (allUp ? 'All systems operational' : 'Some services degraded');
+    }
+    
+    async function loadResources() {
+      const resp = await fetch('/admin/system/resources.json');
+      const data = await resp.json();
+      
+      document.getElementById('disk-percent').textContent = data.disk.percent + '%';
+      document.getElementById('disk-detail').textContent = `${data.disk.used} / ${data.disk.total}`;
+      document.getElementById('disk-bar').style.width = data.disk.percent + '%';
+      document.getElementById('disk-bar').className = 'fill' + (data.disk.percent > 90 ? ' danger' : (data.disk.percent > 70 ? ' warning' : ''));
+      
+      document.getElementById('db-size').textContent = data.database.size;
+      document.getElementById('db-rows').textContent = data.database.rows + ' rows';
+      
+      document.getElementById('image-count').textContent = data.images.count.toLocaleString();
+      document.getElementById('image-size').textContent = data.images.size;
+      
+      document.getElementById('queue-size').textContent = data.queue.pending;
+      document.getElementById('queue-rate').textContent = data.queue.rate + ' processed/min';
+    }
+    
+    async function loadConfig() {
+      const resp = await fetch('/admin/system/config.json');
+      const data = await resp.json();
+      
+      document.getElementById('config-list').innerHTML = Object.entries(data.config).map(([key, val]) => `
+        <div class="config-item">
+          <span class="config-key">${key}</span>
+          <span class="config-value">${val}</span>
+        </div>
+      `).join('');
+      
+      // Alert config
+      if (data.alerts.telegram_enabled) {
+        document.getElementById('telegram-status').textContent = 'Enabled';
+        document.getElementById('telegram-status').className = 'status-chip enabled';
+        document.getElementById('telegram-token').textContent = '****' + data.alerts.telegram_token_suffix;
+        document.getElementById('telegram-chat').textContent = data.alerts.telegram_chat_id;
+      }
+      
+      document.getElementById('stale-seconds').textContent = data.alerts.stale_seconds + 's';
+      document.getElementById('offline-seconds').textContent = data.alerts.offline_seconds + 's';
+      document.getElementById('health-interval').textContent = data.alerts.health_interval + 's';
+    }
+    
+    async function loadHealthEvents() {
+      const resp = await fetch('/admin/system/health-events.json');
+      const data = await resp.json();
+      
+      document.getElementById('health-events').innerHTML = data.events.slice(0, 10).map(evt => `
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 10px;">${formatTime(evt.triggered_at)}</td>
+          <td style="padding: 10px;">${evt.camera_id}</td>
+          <td style="padding: 10px;">
+            <span style="color: ${evt.health_status === 'ONLINE' ? 'var(--status-green)' : (evt.health_status === 'STALE' ? 'var(--status-yellow)' : 'var(--status-red)')}">
+              ${evt.health_status}
+            </span>
+          </td>
+          <td style="padding: 10px; color: var(--text-secondary);">${evt.message}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4" style="padding: 20px; text-align: center; color: var(--text-secondary);">No recent events</td></tr>';
+    }
+    
+    function formatTime(isoStr) {
+      if (!isoStr) return '-';
+      return new Date(isoStr).toLocaleString();
+    }
+
+    // ---- Operating Hours Settings ----
+
+    function hourLabel(h) {
+      if (h === 0)  return '12 AM';
+      if (h < 12)   return h + ' AM';
+      if (h === 12) return '12 PM';
+      return (h - 12) + ' PM';
+    }
+
+    function buildHourOptions() {
+      const startSel = document.getElementById('setting-start');
+      const endSel   = document.getElementById('setting-end');
+      for (let h = 0; h < 24; h++) {
+        const lbl = hourLabel(h);
+        startSel.appendChild(Object.assign(document.createElement('option'), { value: h, textContent: lbl }));
+        endSel.appendChild(  Object.assign(document.createElement('option'), { value: h, textContent: lbl }));
+      }
+    }
+
+    function updateTimeline() {
+      const s = parseInt(document.getElementById('setting-start').value, 10);
+      const e = parseInt(document.getElementById('setting-end').value,   10);
+      const win = document.getElementById('timeline-window');
+      const pct = v => (v / 24 * 100).toFixed(2) + '%';
+      if (s < e) {
+        win.style.left  = pct(s);
+        win.style.width = pct(e - s);
+      } else {
+        // overnight wrap — just highlight 0-end and s-24
+        win.style.left = '0%'; win.style.width = pct(e);
+      }
+    }
+
+    async function loadSettings() {
+      try {
+        const resp = await fetch('/admin/system/settings.json');
+        const data = await resp.json();
+        document.getElementById('setting-start').value = data.operating_hours_start;
+        document.getElementById('setting-end').value   = data.operating_hours_end;
+        document.getElementById('setting-diff').value  = data.scene_diff_threshold;
+        updateTimeline();
+      } catch(e) { console.warn('Could not load settings', e); }
+    }
+
+    async function saveSettings() {
+      const payload = {
+        operating_hours_start: parseInt(document.getElementById('setting-start').value, 10),
+        operating_hours_end:   parseInt(document.getElementById('setting-end').value,   10),
+        scene_diff_threshold:  parseFloat(document.getElementById('setting-diff').value),
+      };
+      const statusEl = document.getElementById('save-status');
+      try {
+        const resp = await fetch('/admin/system/settings', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          statusEl.textContent = '✓ Saved';
+          statusEl.className = 'save-status ok';
+          updateTimeline();
+        } else {
+          statusEl.textContent = '✗ ' + (data.error || 'Unknown error');
+          statusEl.className = 'save-status err';
+        }
+      } catch(e) {
+        statusEl.textContent = '✗ Network error';
+        statusEl.className = 'save-status err';
+      }
+      setTimeout(() => { statusEl.className = 'save-status'; }, 4000);
+    }
+
+    function loadAll() {
+      loadServices();
+      loadResources();
+      loadConfig();
+      loadHealthEvents();
+    }
+
+    // Init
+    buildHourOptions();
+    loadSettings();
+    loadAll();
+    setInterval(loadAll, 30000);
+  </script>
+</body>
+</html>

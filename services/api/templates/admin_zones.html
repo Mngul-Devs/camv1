@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Zones</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 { font-size: 20px; font-weight: 600; }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h2 { font-size: 24px; font-weight: 600; }
+    .filters {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .filters select {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .summary-bar {
+      display: flex;
+      gap: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .summary-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .summary-icon.green { background: rgba(34,197,94,0.15); color: var(--status-green); }
+    .summary-icon.yellow { background: rgba(234,179,8,0.15); color: var(--status-yellow); }
+    .summary-icon.red { background: rgba(239,68,68,0.15); color: var(--status-red); }
+    .summary-text .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+    .summary-text .value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    .zone-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .zone-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.2s;
+    }
+    .zone-card:hover {
+      border-color: var(--accent-blue);
+    }
+    .zone-card .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .zone-card .zone-id {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .zone-card .zone-name {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .zone-card .state-badge {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .state-free { background: rgba(34,197,94,0.15); color: var(--status-green); }
+    .state-partial { background: rgba(234,179,8,0.15); color: var(--status-yellow); }
+    .state-full { background: rgba(239,68,68,0.15); color: var(--status-red); }
+    
+    .zone-card .occupancy {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .zone-card .occupancy-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bg-dark);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .zone-card .occupancy-fill {
+      height: 100%;
+      background: var(--status-green);
+      transition: width 0.3s;
+    }
+    .zone-card .occupancy-fill.partial { background: var(--status-yellow); }
+    .zone-card .occupancy-fill.full { background: var(--status-red); }
+    .zone-card .occupancy-text {
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 45px;
+    }
+    
+    .zone-card .meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    .zone-card .camera-link {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+    .zone-card .camera-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/cameras">Cameras</a>
+      <a href="/admin/zones" class="active">Zones</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/integrations">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>Parking Zones</h2>
+      <div class="filters">
+        <select id="filter-camera" onchange="loadZones()">
+          <option value="">All Cameras</option>
+        </select>
+        <select id="filter-state" onchange="loadZones()">
+          <option value="">All States</option>
+          <option value="FREE">Free</option>
+          <option value="PARTIAL">Partial</option>
+          <option value="FULL">Full</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="summary-bar">
+      <div class="summary-item">
+        <div class="summary-icon green">P</div>
+        <div class="summary-text">
+          <div class="label">Free Zones</div>
+          <div class="value" id="count-free">-</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon yellow">P</div>
+        <div class="summary-text">
+          <div class="label">Partial</div>
+          <div class="value" id="count-partial">-</div>
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon red">P</div>
+        <div class="summary-text">
+          <div class="label">Full</div>
+          <div class="value" id="count-full">-</div>
+        </div>
+      </div>
+      <div class="summary-item" style="margin-left: auto;">
+        <div class="summary-text">
+          <div class="label">Total Capacity</div>
+          <div class="value"><span id="total-occupied">-</span> / <span id="total-capacity">-</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="zone-grid" id="zone-grid"></div>
+  </div>
+
+  <script>
+    let allCameras = [];
+    
+    async function loadCameras() {
+      const resp = await fetch('/admin/cameras.json');
+      const data = await resp.json();
+      allCameras = data.cameras;
+      
+      const sel = document.getElementById('filter-camera');
+      data.cameras.forEach(cam => {
+        const opt = document.createElement('option');
+        opt.value = cam.camera_id;
+        opt.textContent = cam.camera_id + (cam.name ? ` (${cam.name})` : '');
+        sel.appendChild(opt);
+      });
+    }
+    
+    async function loadZones() {
+      const cameraFilter = document.getElementById('filter-camera').value;
+      const stateFilter = document.getElementById('filter-state').value;
+      
+      let url = '/admin/zones.json';
+      const params = [];
+      if (cameraFilter) params.push(`camera_id=${cameraFilter}`);
+      if (stateFilter) params.push(`state=${stateFilter}`);
+      if (params.length) url += '?' + params.join('&');
+      
+      const resp = await fetch(url);
+      const data = await resp.json();
+      
+      // Summary counts
+      document.getElementById('count-free').textContent = data.summary.free;
+      document.getElementById('count-partial').textContent = data.summary.partial;
+      document.getElementById('count-full').textContent = data.summary.full;
+      document.getElementById('total-occupied').textContent = data.summary.total_occupied;
+      document.getElementById('total-capacity').textContent = data.summary.total_capacity;
+      
+      // Zone cards
+      const grid = document.getElementById('zone-grid');
+      grid.innerHTML = data.zones.filter(z => !(z.name||'').startsWith('__campark_meta__')).map(zone => {
+        const occupancyPct = zone.capacity > 0 ? (zone.occupied / zone.capacity * 100) : 0;
+        const fillClass = zone.state === 'FULL' ? 'full' : (zone.state === 'PARTIAL' ? 'partial' : '');
+        // Display clean name — strip any meta prefix
+        const displayName = (zone.name || '').startsWith('__campark_meta__') ? zone.zone_id : (zone.name || zone.zone_id);
+        
+        return `
+          <div class="zone-card">
+            <div class="header">
+              <div>
+                <div class="zone-id">${zone.zone_id}</div>
+                <div class="zone-name">${displayName}</div>
+              </div>
+              <span class="state-badge state-${zone.state.toLowerCase()}">${zone.state}</span>
+            </div>
+            <div class="occupancy">
+              <div class="occupancy-bar">
+                <div class="occupancy-fill ${fillClass}" style="width: ${occupancyPct}%"></div>
+              </div>
+              <div class="occupancy-text">${zone.occupied}/${zone.capacity}</div>
+            </div>
+            <div class="meta">
+              <a href="/admin/zones/${zone.camera_id}/editor" class="camera-link">${zone.camera_id}</a>
+              <span>Changed ${zone.last_change ? formatTime(zone.last_change) : 'never'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function formatTime(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      const now = new Date();
+      const diffSec = Math.floor((now - d) / 1000);
+      if (diffSec < 60) return diffSec + 's ago';
+      if (diffSec < 3600) return Math.floor(diffSec / 60) + 'm ago';
+      if (diffSec < 86400) return Math.floor(diffSec / 3600) + 'h ago';
+      return d.toLocaleDateString();
+    }
+    
+    loadCameras().then(loadZones);
+    setInterval(loadZones, 30000);
+  </script>
+</body>
+</html>

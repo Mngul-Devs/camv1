@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Events</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 { font-size: 20px; font-weight: 600; }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h2 { font-size: 24px; font-weight: 600; }
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filters select, .filters input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    
+    .events-table {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .events-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .events-table th, .events-table td {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .events-table th {
+      color: var(--text-secondary);
+      font-weight: 500;
+      background: rgba(0,0,0,0.2);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    .events-table tr:last-child td { border-bottom: none; }
+    .events-table tr:hover td { background: var(--bg-hover); }
+    
+    .state-change {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .state-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .state-free { background: rgba(34,197,94,0.15); color: var(--status-green); }
+    .state-partial { background: rgba(234,179,8,0.15); color: var(--status-yellow); }
+    .state-full { background: rgba(239,68,68,0.15); color: var(--status-red); }
+    .arrow { color: var(--text-secondary); }
+    
+    .evidence-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--accent-blue);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .evidence-btn:hover {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
+    }
+    .evidence-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .pagination button {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: var(--bg-hover);
+    }
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination span {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    /* Evidence Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+    .evidence-modal {
+      background: var(--bg-card);
+      border-radius: 12px;
+      max-width: 900px;
+      width: 95%;
+      max-height: 90vh;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+    .evidence-modal .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .evidence-modal .header h3 { font-size: 16px; }
+    .evidence-modal .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .evidence-modal .content {
+      padding: 20px;
+    }
+    .evidence-modal img {
+      width: 100%;
+      border-radius: 8px;
+    }
+    .evidence-modal .meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .evidence-modal .meta-item {
+      background: var(--bg-dark);
+      padding: 12px;
+      border-radius: 6px;
+    }
+    .evidence-modal .meta-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+    .evidence-modal .meta-value {
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/cameras">Cameras</a>
+      <a href="/admin/zones">Zones</a>
+      <a href="/admin/events" class="active">Events</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/integrations">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>Zone Events</h2>
+      <div class="filters">
+        <select id="filter-camera">
+          <option value="">All Cameras</option>
+        </select>
+        <select id="filter-zone">
+          <option value="">All Zones</option>
+        </select>
+        <select id="filter-type">
+          <option value="">All Types</option>
+          <option value="OCCUPANCY_CHANGE">Occupancy Change</option>
+          <option value="OFFLINE_ALERT">Offline Alert</option>
+          <option value="STALE_ALERT">Stale Alert</option>
+        </select>
+        <input type="date" id="filter-date">
+        <button class="btn" onclick="loadEvents()">Filter</button>
+        <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+    
+    <div class="events-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Camera</th>
+            <th>Zone</th>
+            <th>Type</th>
+            <th>State Change</th>
+            <th>Units</th>
+            <th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody id="events-tbody"></tbody>
+      </table>
+    </div>
+    
+    <div class="pagination">
+      <button id="prev-btn" onclick="prevPage()" disabled>&larr; Previous</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-btn" onclick="nextPage()">Next &rarr;</button>
+    </div>
+  </div>
+
+  <!-- Evidence Modal -->
+  <div class="modal-backdrop" id="evidence-modal">
+    <div class="evidence-modal">
+      <div class="header">
+        <h3>Evidence Snapshot</h3>
+        <button class="close-btn" onclick="closeEvidence()">&times;</button>
+      </div>
+      <div class="content">
+        <img id="evidence-img" src="" alt="Evidence">
+        <div class="meta">
+          <div class="meta-item">
+            <div class="meta-label">Camera</div>
+            <div class="meta-value" id="ev-camera">-</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Zone</div>
+            <div class="meta-value" id="ev-zone">-</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Time</div>
+            <div class="meta-value" id="ev-time">-</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Change</div>
+            <div class="meta-value" id="ev-change">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    const pageSize = 20;
+    let totalPages = 1;
+    
+    async function loadCameras() {
+      const resp = await fetch('/admin/cameras.json');
+      const data = await resp.json();
+      const sel = document.getElementById('filter-camera');
+      data.cameras.forEach(cam => {
+        const opt = document.createElement('option');
+        opt.value = cam.camera_id;
+        opt.textContent = cam.camera_id;
+        sel.appendChild(opt);
+      });
+    }
+    
+    async function loadEvents() {
+      const camera = document.getElementById('filter-camera').value;
+      const zone = document.getElementById('filter-zone').value;
+      const type = document.getElementById('filter-type').value;
+      const date = document.getElementById('filter-date').value;
+      
+      const params = new URLSearchParams();
+      params.set('page', currentPage);
+      params.set('limit', pageSize);
+      if (camera) params.set('camera_id', camera);
+      if (zone) params.set('zone_id', zone);
+      if (type) params.set('event_type', type);
+      if (date) params.set('date', date);
+      
+      const resp = await fetch('/admin/events.json?' + params.toString());
+      const data = await resp.json();
+      
+      totalPages = Math.ceil(data.total / pageSize) || 1;
+      document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('prev-btn').disabled = currentPage <= 1;
+      document.getElementById('next-btn').disabled = currentPage >= totalPages;
+      
+      const tbody = document.getElementById('events-tbody');
+      tbody.innerHTML = data.events.map(evt => `
+        <tr>
+          <td>${formatTime(evt.triggered_at)}</td>
+          <td>${evt.camera_id}</td>
+          <td>${evt.zone_id}</td>
+          <td>${evt.event_type}</td>
+          <td>
+            <div class="state-change">
+              <span class="state-badge state-${(evt.old_state || 'unknown').toLowerCase()}">${evt.old_state || '-'}</span>
+              <span class="arrow">→</span>
+              <span class="state-badge state-${(evt.new_state || 'unknown').toLowerCase()}">${evt.new_state || '-'}</span>
+            </div>
+          </td>
+          <td>${evt.old_units ?? '-'} → ${evt.new_units ?? '-'}</td>
+          <td>
+            <button class="evidence-btn" onclick="showEvidence(${evt.id}, '${evt.camera_id}', '${evt.zone_id}', '${evt.triggered_at}', '${evt.old_state}', '${evt.new_state}')"
+              ${evt.has_snapshot ? '' : 'disabled'}>
+              ${evt.has_snapshot ? 'View' : 'N/A'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    function formatTime(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      return d.toLocaleString();
+    }
+    
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        loadEvents();
+      }
+    }
+    
+    function nextPage() {
+      if (currentPage < totalPages) {
+        currentPage++;
+        loadEvents();
+      }
+    }
+    
+    function showEvidence(eventId, camera, zone, time, oldState, newState) {
+      document.getElementById('evidence-img').src = `/api/v1/evidence/${eventId}`;
+      document.getElementById('ev-camera').textContent = camera;
+      document.getElementById('ev-zone').textContent = zone;
+      document.getElementById('ev-time').textContent = new Date(time).toLocaleString();
+      document.getElementById('ev-change').textContent = `${oldState} → ${newState}`;
+      document.getElementById('evidence-modal').classList.add('show');
+    }
+    
+    function closeEvidence() {
+      document.getElementById('evidence-modal').classList.remove('show');
+    }
+    
+    function exportCSV() {
+      const camera = document.getElementById('filter-camera').value;
+      const zone = document.getElementById('filter-zone').value;
+      const type = document.getElementById('filter-type').value;
+      const date = document.getElementById('filter-date').value;
+      
+      const params = new URLSearchParams();
+      if (camera) params.set('camera_id', camera);
+      if (zone) params.set('zone_id', zone);
+      if (type) params.set('event_type', type);
+      if (date) params.set('date', date);
+      params.set('limit', '1000');
+      
+      fetch('/admin/events.json?' + params.toString())
+        .then(r => r.json())
+        .then(data => {
+          const rows = [['ID','Camera','Zone','Type','Old State','New State','Triggered At']];
+          data.events.forEach(e => {
+            rows.push([e.id, e.camera_id, e.zone_id, e.event_type, e.old_state, e.new_state, e.triggered_at]);
+          });
+          const csv = rows.map(r => r.join(',')).join('\n');
+          const blob = new Blob([csv], {type: 'text/csv'});
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'events.csv';
+          a.click();
+        });
+    }
+    
+    // Close modal on backdrop click
+    document.getElementById('evidence-modal').addEventListener('click', e => {
+      if (e.target.id === 'evidence-modal') closeEvidence();
+    });
+    
+    loadCameras();
+    loadEvents();
+  </script>
+</body>
+</html>

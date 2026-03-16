@@ -1,0 +1,14 @@
+# Direct IP access - no domain needed for POC
+:80 {
+	@api path /admin* /api* /login* /logout* /health* /static*
+	reverse_proxy @api api:8000
+	reverse_proxy frontend-v6:80
+}
+
+:443 {
+	tls internal
+
+	@api path /admin* /api* /login* /logout* /health* /static*
+	reverse_proxy @api api:8000
+	reverse_proxy frontend-v6:80
+}

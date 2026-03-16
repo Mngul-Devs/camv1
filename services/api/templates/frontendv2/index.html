@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark Frontend V2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/frontendv2/style.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-a"></div>
+  <div class="bg-glow bg-glow-b"></div>
+
+  <div class="layout">
+    <aside class="sidebar panel">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <div>
+          <h1>CAM CORE</h1>
+          <p>Frontend V2</p>
+        </div>
+      </div>
+      <nav class="nav-list">
+        <a href="#overview" class="nav-item active">Command Center</a>
+        <a href="#clients" class="nav-item">Client Monitor</a>
+        <a href="#api-builder" class="nav-item">API Builder</a>
+        <a href="#snapshots" class="nav-item">Snapshot Explorer</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/admin/dashboard" class="btn ghost">Legacy Dashboard</a>
+        <a href="/logout" class="btn danger">Logout</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header id="overview" class="topbar panel">
+        <div>
+          <h2>Central Control Surface</h2>
+          <p>Monitor clients, cameras, resources, activity, and outbound integrations from one place.</p>
+        </div>
+        <div class="topbar-meta">
+          <span id="clock">--:--:--</span>
+          <button id="refresh-all" class="btn primary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="kpi-grid">
+        <article class="kpi panel">
+          <span class="kpi-label">Total Clients</span>
+          <span class="kpi-value" id="kpi-clients">0</span>
+          <span class="kpi-sub" id="kpi-active-clients">0 active today</span>
+        </article>
+        <article class="kpi panel">
+          <span class="kpi-label">Cars Detected (24h)</span>
+          <span class="kpi-value" id="kpi-cars">0</span>
+          <span class="kpi-sub">Across mapped client cameras</span>
+        </article>
+        <article class="kpi panel">
+          <span class="kpi-label">Bandwidth (24h)</span>
+          <span class="kpi-value" id="kpi-bandwidth">0 MB</span>
+          <span class="kpi-sub">Estimated from snapshot transfer</span>
+        </article>
+        <article class="kpi panel">
+          <span class="kpi-label">Camera Fleet</span>
+          <span class="kpi-value" id="kpi-cameras">0</span>
+          <span class="kpi-sub" id="kpi-camera-health">0 online / 0 stale / 0 offline</span>
+        </article>
+      </section>
+
+      <section id="clients" class="split">
+        <article class="panel block">
+          <div class="block-head">
+            <h3>Client Telemetry</h3>
+            <p>Per-client activity, token usage, detections, bandwidth, and status toggles.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Sites</th>
+                  <th>Cars 24h</th>
+                  <th>Bandwidth 24h</th>
+                  <th>CPU / RAM</th>
+                  <th>Activity 1h</th>
+                  <th>Cameras</th>
+                  <th>Push</th>
+                </tr>
+              </thead>
+              <tbody id="client-table">
+                <tr><td colspan="8" class="muted-row">Loading client telemetry...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel block">
+          <div class="block-head">
+            <h3>Live Events Feed</h3>
+            <p>Latest occupancy and system events.</p>
+          </div>
+          <div id="event-feed" class="feed">
+            <p class="muted-row">Loading events...</p>
+          </div>
+        </article>
+      </section>
+
+      <section id="api-builder" class="split">
+        <article class="panel block">
+          <div class="block-head">
+            <h3>API Integration Builder</h3>
+            <p>Configure endpoint, auth, retries, payload map, then test and enable.</p>
+          </div>
+          <form id="api-form" class="form-grid">
+            <label>
+              Client Name
+              <input type="text" id="f-client-name" placeholder="Example: Acme Parking" required>
+            </label>
+            <label>
+              Endpoint URL
+              <input type="url" id="f-endpoint" placeholder="https://client-domain.com/hook/campark" required>
+            </label>
+            <label>
+              Auth Type
+              <select id="f-auth-type">
+                <option value="none">None</option>
+                <option value="bearer">Bearer Token</option>
+                <option value="apikey">X-API-Key Header</option>
+              </select>
+            </label>
+            <label>
+              Auth Value
+              <input type="text" id="f-auth-value" placeholder="token or key">
+            </label>
+            <label>
+              Timeout (s)
+              <input type="number" id="f-timeout" min="1" max="120" value="15">
+            </label>
+            <label>
+              Retry Count
+              <input type="number" id="f-retry" min="0" max="10" value="3">
+            </label>
+            <label class="toggle-row">
+              <span>Push Enabled</span>
+              <input type="checkbox" id="f-enabled" checked>
+            </label>
+            <label class="toggle-row">
+              <span>Include Snapshot URL</span>
+              <input type="checkbox" id="f-snapshot-url" checked>
+            </label>
+            <label class="full">
+              Metadata Mapping (JSON)
+              <textarea id="f-mapping" rows="8"></textarea>
+            </label>
+            <div class="full action-row">
+              <button type="button" id="btn-generate-key" class="btn">Generate API Key</button>
+              <button type="button" id="btn-preview" class="btn ghost">Preview Payload</button>
+              <button type="button" id="btn-save-config" class="btn primary">Save Draft</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel block">
+          <div class="block-head">
+            <h3>Payload Preview</h3>
+            <p>Standardized JSON contract for client integration.</p>
+          </div>
+          <pre id="payload-preview" class="code-block"></pre>
+          <div id="api-key-output" class="callout hidden"></div>
+        </article>
+      </section>
+
+      <section id="snapshots" class="panel block">
+        <div class="block-head">
+          <h3>Snapshot Explorer</h3>
+          <p>Search by exact time range only. Results are constrained to your selected interval.</p>
+        </div>
+        <div class="filter-grid">
+          <label>
+            From (UTC)
+            <input type="datetime-local" id="snap-from">
+          </label>
+          <label>
+            To (UTC)
+            <input type="datetime-local" id="snap-to">
+          </label>
+          <label>
+            Camera ID (optional)
+            <input type="text" id="snap-camera" placeholder="CAM001">
+          </label>
+          <label>
+            Client (optional)
+            <select id="snap-client">
+              <option value="">All Clients</option>
+            </select>
+          </label>
+          <button id="snap-search" class="btn primary">Search Snapshots</button>
+        </div>
+        <div id="snap-meta" class="submeta"></div>
+        <div id="snapshot-grid" class="snapshot-grid">
+          <p class="muted-row">Set a time range and run search.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/frontendv2/app.js"></script>
+</body>
+</html>

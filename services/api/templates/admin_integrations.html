@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Integrations</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 { font-size: 20px; font-weight: 600; }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h2 { font-size: 24px; font-weight: 600; }
+    .btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--bg-hover); }
+    .btn-danger { background: var(--status-red); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    .section-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .section-header h3 { font-size: 16px; font-weight: 600; }
+    .section-body { padding: 20px; }
+    
+    .api-key-card {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .api-key-card:last-child { margin-bottom: 0; }
+    .api-key-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .api-key-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .api-key-status {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-active { background: rgba(34,197,94,0.15); color: var(--status-green); }
+    .status-inactive { background: rgba(239,68,68,0.15); color: var(--status-red); }
+    
+    .api-key-meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      font-size: 13px;
+    }
+    .api-key-meta .label {
+      color: var(--text-secondary);
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .api-key-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .endpoint-list {
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .endpoint-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .endpoint-item:last-child { border-bottom: none; }
+    .endpoint-method {
+      background: var(--status-green);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 12px;
+    }
+    .endpoint-path { flex: 1; }
+    .endpoint-desc {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .webhook-card {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .webhook-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .webhook-url {
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--accent-blue);
+      word-break: break-all;
+    }
+    .webhook-stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .webhook-stats .label {
+      color: var(--text-secondary);
+    }
+    
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      border: 1px solid var(--border-color);
+    }
+    .modal h3 { font-size: 18px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .modal-actions .btn { flex: 1; }
+    
+    .new-key-display {
+      background: var(--bg-dark);
+      border: 2px solid var(--status-green);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .new-key-display .warning {
+      color: var(--status-yellow);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .new-key-display code {
+      display: block;
+      font-family: monospace;
+      font-size: 14px;
+      word-break: break-all;
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/cameras">Cameras</a>
+      <a href="/admin/zones">Zones</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/integrations" class="active">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>Client Integrations</h2>
+    </div>
+    
+    <!-- API Keys Section -->
+    <div class="section">
+      <div class="section-header">
+        <h3>API Keys</h3>
+        <button class="btn" onclick="showCreateKeyModal()">+ Generate API Key</button>
+      </div>
+      <div class="section-body" id="api-keys-list">
+        <p style="color: var(--text-secondary);">Loading...</p>
+      </div>
+    </div>
+    
+    <!-- Available Endpoints -->
+    <div class="section">
+      <div class="section-header">
+        <h3>Available Endpoints</h3>
+      </div>
+      <div class="section-body">
+        <div class="endpoint-list">
+          <div class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/v1/sites/{site_id}/status</span>
+            <span class="endpoint-desc">Zone occupancy for a site</span>
+          </div>
+          <div class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/v1/sites/{site_id}/events</span>
+            <span class="endpoint-desc">Zone change events (paginated)</span>
+          </div>
+          <div class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/v1/cameras/{camera_id}/status</span>
+            <span class="endpoint-desc">Camera status and latest detections</span>
+          </div>
+          <div class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/v1/cameras/{camera_id}/health</span>
+            <span class="endpoint-desc">Camera health (ONLINE/STALE/OFFLINE)</span>
+          </div>
+          <div class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/v1/evidence/{event_id}</span>
+            <span class="endpoint-desc">Evidence snapshot image (2 tokens)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Webhooks Section -->
+    <div class="section">
+      <div class="section-header">
+        <h3>Webhooks (Push Notifications)</h3>
+        <button class="btn btn-secondary" onclick="showWebhookModal()">+ Add Webhook</button>
+      </div>
+      <div class="section-body" id="webhooks-list">
+        <p style="color: var(--text-secondary);">No webhooks configured. Webhooks push zone events to your server in real-time.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create API Key Modal -->
+  <div class="modal-backdrop" id="create-key-modal">
+    <div class="modal">
+      <h3>Generate API Key</h3>
+      <div class="form-group">
+        <label>Client Name</label>
+        <input type="text" id="key-name" placeholder="e.g., Dashboard Client">
+      </div>
+      <div class="form-group">
+        <label>Allowed Sites (comma-separated IDs, leave empty for all)</label>
+        <input type="text" id="key-sites" placeholder="e.g., 1,2,3">
+      </div>
+      <div class="form-group">
+        <label>Rate Limit (requests/minute)</label>
+        <input type="number" id="key-rate" value="60" min="1" max="1000">
+      </div>
+      <div id="new-key-result"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="hideCreateKeyModal()">Close</button>
+        <button class="btn" id="generate-btn" onclick="generateKey()">Generate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Webhook Modal -->
+  <div class="modal-backdrop" id="webhook-modal">
+    <div class="modal">
+      <h3>Add Webhook</h3>
+      <div class="form-group">
+        <label>Webhook URL</label>
+        <input type="url" id="webhook-url" placeholder="https://your-server.com/webhook">
+      </div>
+      <div class="form-group">
+        <label>Secret (for HMAC signing)</label>
+        <input type="text" id="webhook-secret" placeholder="Leave empty to auto-generate">
+      </div>
+      <div class="form-group">
+        <label>Events to Send</label>
+        <select id="webhook-events">
+          <option value="zone_change">Zone State Changes Only</option>
+          <option value="all">All Events (including health)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="hideWebhookModal()">Cancel</button>
+        <button class="btn" onclick="createWebhook()">Add Webhook</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadApiKeys() {
+      const resp = await fetch('/admin/api-keys.json');
+      const data = await resp.json();
+      
+      const container = document.getElementById('api-keys-list');
+      if (!data.keys.length) {
+        container.innerHTML = '<p style="color: var(--text-secondary);">No API keys yet. Generate one to allow external clients to access the API.</p>';
+        return;
+      }
+      
+      container.innerHTML = data.keys.map(key => `
+        <div class="api-key-card">
+          <div class="api-key-header">
+            <span class="api-key-name">${key.name}</span>
+            <span class="api-key-status status-active">Active</span>
+          </div>
+          <div class="api-key-meta">
+            <div>
+              <div class="label">Created</div>
+              <div>${formatDate(key.created_at)}</div>
+            </div>
+            <div>
+              <div class="label">Last Used</div>
+              <div>${key.last_used_at ? formatTime(key.last_used_at) : 'Never'}</div>
+            </div>
+            <div>
+              <div class="label">Rate Limit</div>
+              <div>${key.rate_limit}/min</div>
+            </div>
+            <div>
+              <div class="label">Sites</div>
+              <div>${key.site_ids || 'All'}</div>
+            </div>
+          </div>
+          <div class="api-key-actions">
+            <button class="btn btn-sm btn-secondary" onclick="copyKey('${key.id}')">Copy Key Prefix</button>
+            <button class="btn btn-sm btn-danger" onclick="revokeKey('${key.id}')">Revoke</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    function copyKey(keyId) {
+      // API keys are hashed server-side, so we can only show the key ID as reference
+      navigator.clipboard.writeText('Key ID: ' + keyId).then(() => {
+        alert('Key ID copied to clipboard. Note: Full API keys are only shown at creation time.');
+      }).catch(() => {
+        alert('Key ID: ' + keyId + ' (could not copy to clipboard)');
+      });
+    }
+    
+    function showCreateKeyModal() {
+      document.getElementById('new-key-result').innerHTML = '';
+      document.getElementById('generate-btn').style.display = '';
+      document.getElementById('create-key-modal').classList.add('show');
+    }
+    
+    function hideCreateKeyModal() {
+      document.getElementById('create-key-modal').classList.remove('show');
+      loadApiKeys();
+    }
+    
+    async function generateKey() {
+      const name = document.getElementById('key-name').value.trim() || 'Dashboard';
+      const sitesStr = document.getElementById('key-sites').value.trim();
+      const rateLimit = parseInt(document.getElementById('key-rate').value) || 60;
+      
+      const siteIds = sitesStr ? sitesStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : null;
+      
+      const resp = await fetch('/admin/api-keys/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, site_ids: siteIds, rate_limit_per_minute: rateLimit })
+      });
+      
+      const data = await resp.json();
+      
+      if (data.api_key) {
+        document.getElementById('new-key-result').innerHTML = `
+          <div class="new-key-display">
+            <div class="warning">⚠️ Copy this key now! It won't be shown again.</div>
+            <code>${data.api_key}</code>
+          </div>
+        `;
+        document.getElementById('generate-btn').style.display = 'none';
+      } else {
+        alert(data.error || 'Failed to generate key');
+      }
+    }
+    
+    async function revokeKey(keyId) {
+      if (!confirm('Are you sure you want to revoke this API key? This cannot be undone.')) return;
+      
+      await fetch(`/admin/api-keys/${keyId}`, { method: 'DELETE' });
+      loadApiKeys();
+    }
+    
+    function showWebhookModal() {
+      document.getElementById('webhook-modal').classList.add('show');
+    }
+    
+    function hideWebhookModal() {
+      document.getElementById('webhook-modal').classList.remove('show');
+    }
+    
+    async function createWebhook() {
+      const url = document.getElementById('webhook-url').value.trim();
+      const secret = document.getElementById('webhook-secret').value.trim();
+      const events = document.getElementById('webhook-events').value;
+      
+      if (!url) {
+        alert('URL is required');
+        return;
+      }
+      
+      const resp = await fetch('/admin/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, secret, event_types: events })
+      });
+      
+      if (resp.ok) {
+        hideWebhookModal();
+        loadWebhooks();
+      } else {
+        alert('Failed to create webhook');
+      }
+    }
+    
+    async function loadWebhooks() {
+      // Placeholder - webhooks not yet implemented in backend
+    }
+    
+    function formatDate(isoStr) {
+      if (!isoStr) return '-';
+      return new Date(isoStr).toLocaleDateString();
+    }
+    
+    function formatTime(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      const now = new Date();
+      const diffSec = Math.floor((now - d) / 1000);
+      if (diffSec < 60) return diffSec + 's ago';
+      if (diffSec < 3600) return Math.floor(diffSec / 60) + 'm ago';
+      if (diffSec < 86400) return Math.floor(diffSec / 3600) + 'h ago';
+      return d.toLocaleDateString();
+    }
+    
+    loadApiKeys();
+  </script>
+</body>
+</html>

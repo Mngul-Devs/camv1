@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CamPark - Cameras</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-red: #ef4444;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .nav-links {
+      display: flex;
+      gap: 8px;
+    }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .page-header h2 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .camera-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    .camera-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .camera-card .snapshot-preview {
+      height: 180px;
+      background: var(--bg-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      font-size: 13px;
+      position: relative;
+    }
+    .camera-card .snapshot-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .camera-card .status-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-online { background: rgba(34,197,94,0.9); color: white; }
+    .badge-stale { background: rgba(234,179,8,0.9); color: black; }
+    .badge-offline { background: rgba(239,68,68,0.9); color: white; }
+    .badge-unknown { background: rgba(100,116,139,0.9); color: white; }
+    .camera-card .info {
+      padding: 16px;
+    }
+    .camera-card .camera-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .camera-card .camera-id {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+    .camera-card .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .camera-card .stat {
+      background: var(--bg-dark);
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .camera-card .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+    .camera-card .stat-value {
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .camera-card .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .camera-card .actions .btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 12px;
+    }
+
+    /* FTP Details panel */
+    .ftp-details {
+      display: none;
+      margin-top: 12px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .ftp-details.show { display: block; }
+    .ftp-details h4 {
+      font-size: 12px;
+      color: var(--accent-blue);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .ftp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+    }
+    .ftp-row:last-child { border-bottom: none; }
+    .ftp-row .lbl { color: var(--text-secondary); }
+    .ftp-row .val {
+      color: var(--text-primary);
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      user-select: all;
+    }
+    .ftp-row .copy-btn {
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: 6px;
+    }
+    .ftp-row .copy-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent-blue);
+    }
+    
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 450px;
+      border: 1px solid var(--border-color);
+    }
+    .modal h3 {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .modal-actions .btn { flex: 1; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>CamPark</h1>
+    <div class="nav-links">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/cameras" class="active">Cameras</a>
+      <a href="/admin/zones">Zones</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/integrations">Integrations</a>
+      <a href="/admin/scada">SCADA</a>
+      <a href="/admin/system">System</a>
+      <a href="/logout" style="color:#ef4444">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>Cameras</h2>
+      <button class="btn" onclick="showAddModal()">+ Add Camera</button>
+    </div>
+    
+    <div class="camera-grid" id="camera-grid"></div>
+  </div>
+
+  <!-- Add Camera Modal -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <h3>Add New Camera</h3>
+      <div class="form-group">
+        <label>Camera ID</label>
+        <input type="text" id="input-camera-id" placeholder="e.g., CAM002">
+      </div>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="input-name" placeholder="e.g., Parking Entrance">
+      </div>
+      <div class="form-group">
+        <label>Brand</label>
+        <select id="input-brand">
+          <option value="">-- Select --</option>
+          <option value="dahua">Dahua</option>
+          <option value="uniarch">Uniarch</option>
+          <option value="uniview">Uniview</option>
+          <option value="hikvision">Hikvision</option>
+          <option value="axis">Axis</option>
+          <option value="vigi">VIGI (TP-Link)</option>
+          <option value="generic">Generic / Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Model</label>
+        <input type="text" id="input-model" placeholder="e.g., IPC-HFW7442H-Z4FR">
+      </div>
+      <div class="form-group">
+        <label>Ingestion Protocol</label>
+        <select id="input-protocol" onchange="toggleProtocolFields()">
+          <option value="ftp">FTP (camera pushes snapshots)</option>
+          <!-- <option value="lapi_ws">LAPI WebSocket (4G / camera-initiated)</option> -->
+          <option value="rtsp">RTSP (server pulls frames)</option>
+          <option value="http_snap">HTTP Snapshot (server polls URL)</option>
+        </select>
+      </div>
+      <!-- FTP fields -->
+      <div id="ftp-fields">
+        <div class="form-group">
+          <label>FTP Username</label>
+          <input type="text" id="input-ftp" placeholder="e.g., cam002">
+        </div>
+        <div class="form-group">
+          <label>FTP Password</label>
+          <input type="password" id="input-ftp-pass" placeholder="Camera FTP password">
+        </div>
+      </div>
+      <!-- LAPI WebSocket fields (disabled) -->
+      <div id="lapi-fields" style="display:none;"></div>
+      <!-- RTSP fields -->
+      <div id="rtsp-fields" style="display:none;">
+        <div class="form-group">
+          <label>RTSP URL</label>
+          <input type="text" id="input-rtsp-url" placeholder="rtsp://192.168.1.100:554/stream1">
+        </div>
+        <div class="form-group">
+          <label>Username (optional)</label>
+          <input type="text" id="input-rtsp-user" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label>Password (optional)</label>
+          <input type="password" id="input-rtsp-pass" placeholder="password">
+        </div>
+        <div class="form-group">
+          <label>Poll interval (seconds)</label>
+          <input type="number" id="input-rtsp-interval" value="10" min="1" max="300">
+        </div>
+      </div>
+      <!-- HTTP Snapshot fields -->
+      <div id="http-fields" style="display:none;">
+        <div class="form-group">
+          <label>Snapshot URL</label>
+          <input type="text" id="input-http-url" placeholder="http://192.168.1.100/snap.jpg">
+        </div>
+        <div class="form-group">
+          <label>Username (optional)</label>
+          <input type="text" id="input-http-user" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label>Password (optional)</label>
+          <input type="password" id="input-http-pass" placeholder="password">
+        </div>
+        <div class="form-group">
+          <label>Poll interval (seconds)</label>
+          <input type="number" id="input-http-interval" value="10" min="1" max="300">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Site</label>
+        <select id="input-site">
+          <option value="1">POC_Site_01</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="hideAddModal()">Cancel</button>
+        <button class="btn" onclick="createCamera()">Add Camera</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleProtocolFields() {
+      const proto = document.getElementById('input-protocol').value;
+      document.getElementById('ftp-fields').style.display = proto === 'ftp' ? 'block' : 'none';
+      // document.getElementById('lapi-fields').style.display = proto === 'lapi_ws' ? 'block' : 'none';
+      document.getElementById('rtsp-fields').style.display = proto === 'rtsp' ? 'block' : 'none';
+      document.getElementById('http-fields').style.display = proto === 'http_snap' ? 'block' : 'none';
+    }
+
+    let ftpServer = '', ftpPort = 21, ftpRemoteDir = 'incoming';
+
+    // Returns the brand-specific FTP upload path row for the camera details panel.
+    // VIGI saves to the FTP chroot root (/). Dahua/others use an /incoming subdir.
+    function ftpUploadPathRow(brand, defaultDir) {
+      const b = (brand || '').toLowerCase();
+      if (b === 'vigi') {
+        return `<div class="ftp-row"><span class="lbl">Upload Path</span><span class="val" style="color:#aaa">Save to root directory<br><small style="color:#666">In VIGI: Storage → FTP → Upload path → "Save to the root directory"</small></span></div>`;
+      }
+      // Dahua, Uniarch, Hikvision, Axis, generic — use /incoming subdir
+      const dir = defaultDir || 'incoming';
+      return `<div class="ftp-row"><span class="lbl">Remote Dir</span><span><span class="val">${dir}</span><button class="copy-btn" onclick="copyText('${dir}')">Copy</button></span></div>`;
+    }
+
+    async function loadCameras() {
+      const resp = await fetch('/admin/cameras-detail.json');
+      const data = await resp.json();
+      ftpServer = data.ftp_server || '';
+      ftpPort = data.ftp_port || 21;
+      ftpRemoteDir = data.ftp_remote_dir || 'incoming';
+      const grid = document.getElementById('camera-grid');
+      
+      const protocolLabel = {ftp:'FTP', lapi_ws:'LAPI WS', rtsp:'RTSP', http_snap:'HTTP', onvif:'ONVIF'};
+      
+      grid.innerHTML = data.cameras.map(cam => `
+        <div class="camera-card">
+          <div class="snapshot-preview">
+            ${cam.has_snapshot 
+              ? `<img src="/api/v1/cameras/${cam.camera_id}/snapshot-latest" alt="Latest snapshot">`
+              : 'No snapshots yet'}
+            <span class="status-badge badge-${cam.status.toLowerCase()}">${cam.status}</span>
+          </div>
+          <div class="info">
+            <div class="camera-name">${cam.name || cam.camera_id}</div>
+            <div class="camera-id">${cam.camera_id} &bull; ${cam.brand ? cam.brand.toUpperCase() + ' ' : ''}${protocolLabel[cam.ingest_protocol] || cam.ingest_protocol || 'FTP'}${cam.model ? ' &bull; ' + cam.model : ''}</div>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-label">Last Seen</div>
+                <div class="stat-value">${cam.last_seen_at ? formatTime(cam.last_seen_at) : 'Never'}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Snapshots (1h)</div>
+                <div class="stat-value">${cam.snapshots_1h}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Zones</div>
+                <div class="stat-value">${cam.zone_count}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Last Inference</div>
+                <div class="stat-value">${cam.last_inference ? formatTime(cam.last_inference) : '-'}</div>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" onclick="toggleDetails('${cam.camera_id}')">&#9432; Details</button>
+              <button class="btn" onclick="editZones('${cam.camera_id}')">Edit Zones</button>
+              <button class="btn" style="background:var(--status-red);flex:0;padding:8px 12px;" onclick="confirmDelete('${cam.camera_id}','${(cam.name||cam.camera_id).replace(/'/g,"\\'")}')" title="Delete camera">&#x1F5D1;</button>
+            </div>
+            <div class="ftp-details" id="details-${cam.camera_id}">
+              <h4>${cam.ingest_protocol === 'ftp' ? 'FTP Connection Details — enter these in your camera' : 'Connection Details'}</h4>
+              ${cam.ingest_protocol === 'ftp' ? `
+              <div class="ftp-row"><span class="lbl">Server</span><span><span class="val">${ftpServer}</span><button class="copy-btn" onclick="copyText('${ftpServer}')">Copy</button></span></div>
+              <div class="ftp-row"><span class="lbl">Port</span><span><span class="val">${ftpPort}</span></span></div>
+              <div class="ftp-row"><span class="lbl">Username</span><span><span class="val">${cam.ftp_username || '-'}</span><button class="copy-btn" onclick="copyText('${cam.ftp_username || ''}')">Copy</button></span></div>
+              <div class="ftp-row"><span class="lbl">Password</span><span><span class="val">${cam.ftp_password || '-'}</span><button class="copy-btn" onclick="copyText('${cam.ftp_password || ''}')">Copy</button></span></div>
+              ${ftpUploadPathRow(cam.brand, ftpRemoteDir)}
+              <div class="ftp-row"><span class="lbl">Passive Ports</span><span><span class="val">30000-30049</span></span></div>
+              ` : `<div class="ftp-row"><span class="lbl">Protocol</span><span class="val">${(protocolLabel[cam.ingest_protocol] || cam.ingest_protocol || 'FTP').toUpperCase()}</span></div>`}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    function maskFtp(username) {
+      if (!username) return '-';
+      if (username.length <= 4) return username;
+      return username.slice(0, 2) + '***' + username.slice(-2);
+    }
+    
+    function formatTime(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      const now = new Date();
+      const diffSec = Math.floor((now - d) / 1000);
+      if (diffSec < 60) return diffSec + 's ago';
+      if (diffSec < 3600) return Math.floor(diffSec / 60) + 'm ago';
+      if (diffSec < 86400) return Math.floor(diffSec / 3600) + 'h ago';
+      return d.toLocaleDateString();
+    }
+    
+    function showAddModal() {
+      document.getElementById('add-modal').classList.add('show');
+    }
+    function hideAddModal() {
+      document.getElementById('add-modal').classList.remove('show');
+    }
+    
+    async function createCamera() {
+      const cameraId = document.getElementById('input-camera-id').value.trim();
+      const name = document.getElementById('input-name').value.trim();
+      const brand = document.getElementById('input-brand').value;
+      const model = document.getElementById('input-model').value.trim();
+      const protocol = document.getElementById('input-protocol').value;
+      const siteId = document.getElementById('input-site').value;
+      
+      if (!cameraId) {
+        alert('Camera ID is required.');
+        return;
+      }
+      
+      const payload = {
+        camera_id: cameraId,
+        name: name,
+        brand: brand,
+        model: model,
+        ingest_protocol: protocol,
+        site_id: parseInt(siteId),
+      };
+      
+      if (protocol === 'ftp') {
+        const ftpUser = document.getElementById('input-ftp').value.trim();
+        const ftpPass = document.getElementById('input-ftp-pass').value.trim();
+        if (!ftpUser) { alert('FTP username is required for FTP protocol.'); return; }
+        if (!ftpPass) { alert('FTP password is required for FTP protocol.'); return; }
+        payload.ftp_username = ftpUser;
+        payload.ftp_password = ftpPass;
+      // LAPI WebSocket disabled
+      // } else if (protocol === 'lapi_ws') {
+      //   payload.lapi_device_code = document.getElementById('input-lapi-device').value.trim();
+      //   payload.lapi_secret = document.getElementById('input-lapi-secret').value.trim();
+      } else if (protocol === 'rtsp') {
+        const url = document.getElementById('input-rtsp-url').value.trim();
+        if (!url) { alert('RTSP URL is required.'); return; }
+        payload.connection_config = JSON.stringify({
+          rtsp_url: url,
+          username: document.getElementById('input-rtsp-user').value.trim() || undefined,
+          password: document.getElementById('input-rtsp-pass').value.trim() || undefined,
+          interval: parseFloat(document.getElementById('input-rtsp-interval').value) || 10,
+        });
+      } else if (protocol === 'http_snap') {
+        const url = document.getElementById('input-http-url').value.trim();
+        if (!url) { alert('Snapshot URL is required.'); return; }
+        payload.connection_config = JSON.stringify({
+          snapshot_url: url,
+          username: document.getElementById('input-http-user').value.trim() || undefined,
+          password: document.getElementById('input-http-pass').value.trim() || undefined,
+          interval: parseFloat(document.getElementById('input-http-interval').value) || 10,
+        });
+      }
+      
+      const resp = await fetch('/admin/cameras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!resp.ok) {
+        const err = await resp.json();
+        alert(err.error || 'Failed to create camera');
+        return;
+      }
+      
+      hideAddModal();
+      // Reset form fields
+      ['input-camera-id','input-name','input-model','input-ftp','input-ftp-pass',
+       'input-lapi-device','input-lapi-secret',
+       'input-rtsp-url','input-rtsp-user','input-rtsp-pass',
+       'input-http-url','input-http-user','input-http-pass'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      document.getElementById('input-brand').value = '';
+      document.getElementById('input-protocol').value = 'ftp';
+      toggleProtocolFields();
+      loadCameras();
+    }
+    
+    function toggleDetails(cameraId) {
+      const el = document.getElementById('details-' + cameraId);
+      if (el) el.classList.toggle('show');
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        // Brief visual feedback
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.color = '#22c55e';
+        setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1200);
+      });
+    }
+    
+    function editZones(cameraId) {
+      window.location.href = `/admin/zones/${cameraId}/editor`;
+    }
+    
+    async function confirmDelete(cameraId, name) {
+      if (!confirm(`Delete camera "${name}" (${cameraId})?\n\nThis will permanently delete all snapshots, detections, zones, and events for this camera.`)) return;
+      try {
+        const resp = await fetch(`/admin/cameras/${cameraId}`, { method: 'DELETE', credentials: 'same-origin' });
+        if (!resp.ok) {
+          const err = await resp.json();
+          alert('Delete failed: ' + (err.error || resp.status));
+          return;
+        }
+        loadCameras();
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+      }
+    }
+    
+    loadCameras();
+    setInterval(loadCameras, 30000);
+  </script>
+</body>
+</html>
