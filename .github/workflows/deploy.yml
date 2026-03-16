@@ -25,13 +25,13 @@ jobs:
             cd /home/PC-Mighul/camv1
 
             echo "--- Pulling latest code ---"
-            git pull origin main
+            sudo git pull origin main
 
             echo "--- Rebuilding and restarting services ---"
-            docker compose up -d --build
+            sudo docker compose up -d --build
 
             echo "--- Cleaning up old images ---"
-            docker image prune -f
+            sudo docker image prune -f
 
             echo "--- Health check ---"
             sleep 5
